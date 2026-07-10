@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f6b5c">
+<title>TCIM Global Watch</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1a2330;--sub:#5b6675;--line:#e4e8ee;--accent:#0f6b5c;--accent-soft:#e3f1ee;--policy:#0f6b5c;--evidence:#3554a5;--jobs:#a05a1f;--chip:#eef1f5;--chip-on:#0f6b5c}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--card:#1a2028;--ink:#e8ecf1;--sub:#9aa5b1;--line:#2a323d;--accent:#4fb3a1;--accent-soft:#1e3330;--chip:#232b35}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.55}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 16px 0;position:sticky;top:0;z-index:10}
+.brand{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.brand h1{font-size:19px;margin:0;letter-spacing:-.3px}
+.brand .issue{font-size:12.5px;color:var(--sub)}
+nav{display:flex;gap:2px;margin-top:10px;overflow-x:auto}
+nav button{flex:0 0 auto;border:none;background:none;padding:9px 13px;font-size:14px;color:var(--sub);border-bottom:2.5px solid transparent;cursor:pointer;font-weight:600}
+nav button.on{color:var(--accent);border-color:var(--accent)}
+main{max-width:760px;margin:0 auto;padding:14px 14px 60px}
+.stats{font-size:12.5px;color:var(--sub);margin:2px 2px 12px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px;margin-bottom:6px}
+.chip{flex:0 0 auto;background:var(--chip);border:1px solid var(--line);color:var(--sub);border-radius:16px;padding:5px 12px;font-size:12.5px;cursor:pointer;font-weight:600}
+.chip.on{background:var(--chip-on);border-color:var(--chip-on);color:#fff}
+h2.sec{font-size:15px;margin:20px 2px 8px;display:flex;align-items:center;gap:7px}
+h2.sec .bar{width:4px;height:16px;border-radius:2px;display:inline-block}
+.count{font-size:12px;color:var(--sub);font-weight:500}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:9px;position:relative}
+.badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;padding-right:30px}
+.b{font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 7px;letter-spacing:.2px}
+.b.region{background:var(--accent-soft);color:var(--accent)}
+.b.policy{background:rgba(15,107,92,.12);color:var(--policy)}
+.b.evidence{background:rgba(53,84,165,.12);color:var(--evidence)}
+.b.jobs{background:rgba(160,90,31,.14);color:var(--jobs)}
+.b.other{background:var(--chip);color:var(--sub)}
+.b.lang{background:var(--chip);color:var(--sub);font-weight:600}
+.b.live{background:#7a2f8f22;color:#9a4fb0}
+.card h3{margin:0 0 5px;font-size:14.5px;line-height:1.45}
+.card p{margin:0 0 8px;font-size:13.5px}
+.meta{font-size:12px;color:var(--sub)}
+.meta a{font-weight:700}
+.star{position:absolute;top:10px;right:10px;border:none;background:none;font-size:17px;cursor:pointer;color:#c8b03c;opacity:.45}
+.star.on{opacity:1}
+.note{background:var(--accent-soft);border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;font-size:12.5px;margin:10px 0}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin:14px 0}
+summary{cursor:pointer;font-weight:700;font-size:13.5px}
+table.rg{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+table.rg td{padding:6px 4px;border-top:1px solid var(--line);vertical-align:top}
+table.rg td:first-child{font-weight:700;white-space:nowrap;width:86px;color:var(--accent)}
+.search-box{display:flex;gap:7px;margin-bottom:8px}
+.search-box input{flex:1;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:10px 13px;font-size:15px;outline:none}
+.search-box input:focus{border-color:var(--accent)}
+.btn{border:none;border-radius:10px;padding:10px 14px;font-size:13.5px;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.ghost{background:var(--chip);color:var(--ink);border:1px solid var(--line)}
+.btnrow{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.selrow{display:flex;gap:7px;margin-bottom:10px}
+.selrow select{flex:1;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px;font-size:13.5px}
+.src{display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:13.5px}
+.src-group{margin:16px 0 6px;font-size:13px;font-weight:800;color:var(--sub)}
+.st{font-size:11px;font-weight:800;border-radius:5px;padding:2px 7px;align-self:center;white-space:nowrap}
+.st.ok{background:rgba(15,107,92,.13);color:var(--policy)}
+.st.part{background:rgba(160,90,31,.14);color:var(--jobs)}
+.st.plan{background:var(--chip);color:var(--sub)}
+.empty{text-align:center;color:var(--sub);font-size:13.5px;padding:22px 0}
+.imp{background:var(--card);border-left:4px solid var(--accent);border-radius:8px;padding:11px 13px;font-size:13.5px;margin:12px 0}
+footer{max-width:760px;margin:0 auto;padding:0 16px 40px;font-size:11.5px;color:var(--sub)}
+.loading{text-align:center;color:var(--sub);padding:30px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>TCIM Global Watch</h1><span class="issue" id="issueInfo">불러오는 중…</span></div>
+  <nav>
+    <button id="nb-week" class="on" onclick="showTab('week')">브리핑</button>
+    <button id="nb-archive" onclick="showTab('archive')">아카이브</button>
+    <button id="nb-search" onclick="showTab('search')">검색</button>
+    <button id="nb-sources" onclick="showTab('sources')">자료원</button>
+  </nav>
+</header>
+<main>
+  <section id="tab-week"><div class="loading">최신 브리핑을 불러오는 중…</div></section>
+  <section id="tab-archive" hidden><div class="loading">불러오는 중…</div></section>
+  <section id="tab-search" hidden>
+    <div class="search-box"><input id="q" type="search" placeholder="키워드 (예: acupuncture, 주치의, Ayurveda)"><button class="btn primary" onclick="dbSearch()">검색</button></div>
+    <div class="selrow">
+      <select id="fRegion"><option value="">지역 전체</option><option>GLOBAL</option><option>AFR</option><option>AMR</option><option>SEA</option><option>EUR</option><option>EMR</option><option>WPR</option></select>
+      <select id="fSection"><option value="">섹션 전체</option><option value="policy">정책·규제</option><option value="evidence">근거·연구</option><option value="jobs">채용·기회</option></select>
+    </div>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="livePubmed()">⚡ PubMed 실시간</button>
+      <button class="btn ghost" onclick="liveEpmc()">⚡ Europe PMC 실시간</button>
+      <button class="btn ghost" onclick="showBookmarks()">★ 저장한 항목</button>
+    </div>
+    <p class="stats">기본 검색은 수집 아카이브 대상 · ⚡ 실시간은 원천 데이터베이스를 직접 조회합니다 (뉴스 실시간 검색은 추후 추가)</p>
+    <div id="searchOut"></div>
+  </section>
+  <section id="tab-sources" hidden><div class="loading">불러오는 중…</div></section>
+</main>
+<footer>TCIM Global Watch · 매주 월 08:00 KST 발행 · 공개 자료의 개인 연구 목적 수집·정리 · 논문 항목 출처: PubMed(DOI 병기)</footer>
+<script>
+var SB='https://wlvhmuudjylaayunnkop.supabase.co';
+var KEY='sb_publishable_i2Hw_ccBAMPnf7W4ZHM2hw_-uGk4Ejq';
+var SECL={policy:'정책·규제',evidence:'근거·연구',jobs:'채용·기회',other:'기타'};
+var REGIONS=['전체','GLOBAL','AFR','AMR','SEA','EUR','EMR','WPR'];
+var RKEYS=['GLOBAL','AFR','AMR','SEA','EUR','EMR','WPR'];
+var state={briefing:null,rows:[],briefings:[],region:'전체',itemById:{},latestId:null};
+function api(p){return fetch(SB+'/rest/v1/'+p,{headers:{apikey:KEY}}).then(function(r){if(!r.ok){throw new Error('API '+r.status);}return r.json();});}
+function esc(s){if(s===null||s===undefined){return '';}return String(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;');}
+function bmAll(){try{return JSON.parse(localStorage.getItem('tcim_bm')||'{}');}catch(e){return {};}}
+function bmSave(m){try{localStorage.setItem('tcim_bm',JSON.stringify(m));}catch(e){}}
+function bm(id){var m=bmAll();var it=state.itemById[id];if(m[id]){delete m[id];}else if(it){m[id]={id:it.id,title:it.title,title_ko:it.title_ko,url:it.url,summary_ko:it.summary_ko,region:it.region,section:it.section,published_at:it.published_at,lang:it.lang};}bmSave(m);var b=document.getElementById('bm-'+id);if(b){b.className=m[id]?'star on':'star';}}
+function card(it,opts){opts=opts||{};if(it&&it.id){state.itemById[it.id]=it;}
+ var m=bmAll();var starred=it.id&&m[it.id];
+ var h='<div class="card">';
+ if(it.id){h+='<button class="star'+(starred?' on':'')+'" id="bm-'+it.id+'" onclick="bm('+it.id+')" title="저장">★</button>';}
+ h+='<div class="badges">';
+ if(it.region){h+='<span class="b region">'+esc(it.region)+'</span>';}
+ if(it.section){h+='<span class="b '+esc(it.section)+'">'+(SECL[it.section]||esc(it.section))+'</span>';}
+ if(opts.live){h+='<span class="b live">실시간·미수집</span>';}
+ if(it.lang){h+='<span class="b lang">'+esc(String(it.lang).toUpperCase())+'</span>';}
+ h+='</div>';
+ var t=it.title_ko||it.title||'(제목 없음)';
+ h+='<h3>'+esc(t)+'</h3>';
+ if(it.title_ko&&it.title&&it.title_ko!==it.title){h+='<p class="meta" style="margin:-2px 0 6px">'+esc(it.title)+'</p>';}
+ if(it.summary_ko){h+='<p>'+esc(it.summary_ko)+'</p>';}
+ var srcName=(it.source&&it.source.name)?it.source.name+' · ':'';
+ var d=it.published_at?it.published_at:'날짜 미상';
+ h+='<div class="meta">'+esc(srcName)+esc(d);
+ if(it.url){h+=' · <a href="'+esc(it.url)+'" target="_blank" rel="noopener">원문 보기 ↗</a>';}
+ h+='</div></div>';
+ return h;}
+function chipRow(){var h='<div class="chips">';for(var i=0;i<REGIONS.length;i++){var r=REGIONS[i];h+='<span class="chip'+(r===state.region?' on':'')+'" onclick="setRegion(&quot;'+r+'&quot;)">'+r+'</span>';}return h+'</div>';}
+function setRegion(r){state.region=r;renderWeek();}
+function visRows(){var out=[];for(var i=0;i<state.rows.length;i++){var row=state.rows[i];var it=row.item;if(!it){continue;}if(state.region!=='전체'&&it.region!==state.region){continue;}out.push(row);}return out;}
+function blockRows(rows,block){var out=[];for(var i=0;i<rows.length;i++){if(rows[i].block===block){out.push(rows[i]);}}out.sort(function(a,b){return (a.rank||0)-(b.rank||0);});return out;}
+function renderWeek(){var b=state.briefing;var el=document.getElementById('tab-week');
+ if(!b){el.innerHTML='<p class="empty">아직 발행된 브리핑이 없습니다.</p>';return;}
+ var tag=(b.issue_no===0)?' (파일럿)':'';
+ document.getElementById('issueInfo').textContent='제'+b.issue_no+'호'+tag+' · '+b.period_start+' ~ '+b.period_end;
+ var h='';
+ if(state.latestId&&b.id!==state.latestId){h+='<div class="note">과거 호를 보고 있습니다. <a href="javascript:void(0)" onclick="loadLatest()">최신 브리핑으로 →</a></div>';}
+ var s=b.stats||{};
+ var sl=[];if(s.collected){sl.push('수집 '+s.collected+'건');}if(s.selected){sl.push('선별 '+s.selected+'건');}
+ if(sl.length){h+='<p class="stats">'+sl.join(' → ')+' · 발행 '+String(b.published_at||'').slice(0,10)+'</p>';}
+ h+=chipRow();
+ var rows=visRows();
+ var heads=blockRows(rows,'headline');
+ if(heads.length){h+='<h2 class="sec"><span class="bar" style="background:var(--accent)"></span>이번 주 헤드라인</h2>';for(var i=0;i<heads.length;i++){h+=card(heads[i].item);}}
+ var blocks=['policy','evidence','jobs'];
+ for(var j=0;j<blocks.length;j++){var bk=blocks[j];var rs=blockRows(rows,bk);
+  h+='<h2 class="sec"><span class="bar" style="background:var(--'+bk+')"></span>'+SECL[bk]+' <span class="count">'+rs.length+'건</span></h2>';
+  if(rs.length){for(var k=0;k<rs.length;k++){h+=card(rs[k].item);}}else{h+='<p class="empty" style="padding:8px 0">해당 소식이 없습니다.</p>';}}
+ if(b.regional_notes){h+='<h2 class="sec">🌍 지역 한 줄 요약</h2><div class="card"><table class="rg">';
+  for(var q=0;q<RKEYS.length;q++){var rk=RKEYS[q];var v=b.regional_notes[rk];if(v){h+='<tr><td>'+rk+'</td><td>'+esc(v)+'</td></tr>';}}
+  h+='</table></div>';}
+ if(b.implication_md){h+='<div class="imp"><b>💡 시사점 메모</b><br>'+esc(b.implication_md)+'</div>';}
+ var alls=blockRows(rows,'all');
+ if(alls.length){h+='<details><summary>📄 참고 목록 ('+alls.length+'건)</summary>';for(var w=0;w<alls.length;w++){h+=card(alls[w].item);}h+='</details>';}
+ el.innerHTML=h;}
+function openIssue(id){var b=null;for(var i=0;i<state.briefings.length;i++){if(state.briefings[i].id===id){b=state.briefings[i];}}
+ if(!b){return;}state.briefing=b;
+ api('tcim_briefing_items?select=block,rank,item:tcim_items(*,source:tcim_sources(name))&briefing_id=eq.'+id+'&order=rank.asc').then(function(rows){state.rows=rows;renderWeek();showTab('week');}).catch(showErr);}
+function loadLatest(){api('tcim_briefings?select=*&order=issue_no.desc&limit=1').then(function(bs){
+ if(!bs.length){document.getElementById('tab-week').innerHTML='<p class="empty">아직 발행된 브리핑이 없습니다. 첫 발행은 월요일 08:00입니다.</p>';document.getElementById('issueInfo').textContent='발행 전';return;}
+ state.latestId=bs[0].id;if(state.briefings.length===0){state.briefings=[bs[0]];}else{var found=false;for(var i=0;i<state.briefings.length;i++){if(state.briefings[i].id===bs[0].id){found=true;}}if(!found){state.briefings.unshift(bs[0]);}}
+ openIssue(bs[0].id);}).catch(showErr);}
+function renderArchive(){api('tcim_briefings?select=*&order=issue_no.desc').then(function(bs){state.briefings=bs;
+ var el=document.getElementById('tab-archive');
+ if(!bs.length){el.innerHTML='<p class="empty">아직 발행분이 없습니다.</p>';return;}
+ var h='<p class="stats">총 '+bs.length+'호 · 호를 누르면 열립니다</p>';
+ for(var i=0;i<bs.length;i++){var b=bs[i];var tag=(b.issue_no===0)?' (파일럿)':'';
+  var hm=b.headline_md?esc(b.headline_md).split('- ').join('').split(String.fromCharCode(10)).slice(0,2).join(' / '):'';
+  h+='<div class="card" onclick="openIssue('+b.id+')" style="cursor:pointer"><div class="badges"><span class="b region">제'+b.issue_no+'호'+tag+'</span></div><h3>'+b.period_start+' ~ '+b.period_end+'</h3><p class="meta">'+hm+'</p></div>';}
+ el.innerHTML=h;}).catch(showErr);}
+function cleanQ(q){return q.split('(').join(' ').split(')').join(' ').split(',').join(' ').split('*').join(' ').trim();}
+function dbSearch(){var q=cleanQ(document.getElementById('q').value);var out=document.getElementById('searchOut');
+ if(!q){out.innerHTML='<p class="empty">키워드를 입력하세요.</p>';return;}
+ out.innerHTML='<div class="loading">아카이브 검색 중…</div>';
+ var pat='*'+encodeURIComponent(q)+'*';
+ var u='tcim_items?select=*,source:tcim_sources(name)&or=(title.ilike.'+pat+',title_ko.ilike.'+pat+',summary_ko.ilike.'+pat+')';
+ var fr=document.getElementById('fRegion').value;var fs=document.getElementById('fSection').value;
+ if(fr){u+='&region=eq.'+fr;}if(fs){u+='&section=eq.'+fs;}
+ u+='&order=published_at.desc.nullslast&limit=50';
+ api(u).then(function(items){
+  if(!items.length){out.innerHTML='<p class="empty">아카이브에 결과가 없습니다.<br>⚡ 실시간 검색으로 원천을 직접 조회해 보세요.</p>';return;}
+  var h='<p class="stats">아카이브 '+items.length+'건</p>';for(var i=0;i<items.length;i++){h+=card(items[i]);}out.innerHTML=h;}).catch(function(e){out.innerHTML='<p class="empty">검색 오류: '+esc(e.message)+'</p>';});}
+function livePubmed(){var q=cleanQ(document.getElementById('q').value);var out=document.getElementById('searchOut');
+ if(!q){out.innerHTML='<p class="empty">키워드를 입력하세요.</p>';return;}
+ out.innerHTML='<div class="loading">PubMed 조회 중… (5초 내외)</div>';
+ var eu='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/';
+ fetch(eu+'esearch.fcgi?db=pubmed&retmode=json&retmax=10&sort=date&term='+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(res){
+  var ids=(res.esearchresult&&res.esearchresult.idlist)?res.esearchresult.idlist:[];
+  if(!ids.length){out.innerHTML='<p class="empty">PubMed 결과 없음</p>';return null;}
+  return fetch(eu+'esummary.fcgi?db=pubmed&retmode=json&id='+ids.join(',')).then(function(r){return r.json();}).then(function(sm){
+   var h='<p class="stats">PubMed 최신 '+ids.length+'건 (총 '+esc(res.esearchresult.count)+'건)</p>';
+   for(var i=0;i<ids.length;i++){var d=sm.result[ids[i]];if(!d){continue;}
+    h+=card({title:d.title,summary_ko:null,region:null,section:'evidence',lang:'en',published_at:d.pubdate,url:'https://pubmed.ncbi.nlm.nih.gov/'+ids[i]+'/',source:{name:d.fulljournalname||'PubMed'}},{live:true});}
+   out.innerHTML=h;});}).catch(function(e){out.innerHTML='<p class="empty">PubMed 연결 실패: '+esc(e.message)+'</p>';});}
+function liveEpmc(){var q=cleanQ(document.getElementById('q').value);var out=document.getElementById('searchOut');
+ if(!q){out.innerHTML='<p class="empty">키워드를 입력하세요.</p>';return;}
+ out.innerHTML='<div class="loading">Europe PMC 조회 중…</div>';
+ fetch('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=10&query='+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(res){
+  var rs=(res.resultList&&res.resultList.result)?res.resultList.result:[];
+  if(!rs.length){out.innerHTML='<p class="empty">Europe PMC 결과 없음</p>';return;}
+  var h='<p class="stats">Europe PMC '+rs.length+'건 (총 '+esc(res.hitCount)+'건)</p>';
+  for(var i=0;i<rs.length;i++){var d=rs[i];var link=d.doi?('https://doi.org/'+d.doi):('https://europepmc.org/abstract/'+esc(d.source)+'/'+esc(d.id));
+   h+=card({title:d.title,summary_ko:null,region:null,section:'evidence',lang:'en',published_at:d.pubYear,url:link,source:{name:d.journalTitle||'Europe PMC'}},{live:true});}
+  out.innerHTML=h;}).catch(function(e){out.innerHTML='<p class="empty">Europe PMC 연결 실패: '+esc(e.message)+'</p>';});}
+function showBookmarks(){var m=bmAll();var out=document.getElementById('searchOut');var ks=Object.keys(m);
+ if(!ks.length){out.innerHTML='<p class="empty">저장한 항목이 없습니다. 카드의 ★을 눌러 저장하세요.</p>';return;}
+ var h='<p class="stats">저장한 항목 '+ks.length+'건 (이 기기에만 저장됨)</p>';
+ for(var i=0;i<ks.length;i++){h+=card(m[ks[i]]);}out.innerHTML=h;}
+function renderSources(){api('tcim_sources?select=id,name,type,active,fail_count,default_section&order=id').then(function(ss){
+ var el=document.getElementById('tab-sources');
+ var groups={policy:'정책·국제기구·언론',evidence:'근거·연구',jobs:'채용·기회',etc:'기타'};
+ var h='<p class="stats">등록 자료원 '+ss.length+'건 — 상태를 투명하게 공개합니다</p>';
+ var order=['policy','evidence','jobs','etc'];
+ for(var g=0;g<order.length;g++){var gk=order[g];var rows=[];
+  for(var i=0;i<ss.length;i++){var s=ss[i];var sec=s.default_section||'etc';if(sec!==gk&&!(gk==='etc'&&!groups[sec])){continue;}rows.push(s);}
+  if(!rows.length){continue;}
+  h+='<div class="src-group">'+groups[gk]+'</div>';
+  for(var j=0;j<rows.length;j++){var s2=rows[j];
+   var st,cl;
+   if(!s2.active){st='대기(키·설정)';cl='plan';}else if(s2.fail_count>0){st='점검 중';cl='part';}else{st='정상';cl='ok';}
+   h+='<div class="src"><span>'+esc(s2.name)+'</span><span class="st '+cl+'">'+st+'</span></div>';}}
+ h+='<div class="note">🔎 <b>채용 스팟 체크</b>: <a href="https://unjobs.org/themes/traditional-medicine" target="_blank" rel="noopener">UN 전통의학 테마</a> · <a href="https://www.jobs.ac.uk/search/?keywords=%22integrative%20medicine%22" target="_blank" rel="noopener">jobs.ac.uk</a> · <a href="https://www.timeshighereducation.com/unijobs/searchjobs/?Keywords=integrative%20medicine" target="_blank" rel="noopener">THE unijobs</a><br>🤖 심층 조사가 필요하면 Claude에게 "브리핑 DB에서 ○○ 후속 조사해줘"라고 요청하세요.</div>';
+ el.innerHTML=h;}).catch(showErr);}
+function showErr(e){var el=document.getElementById('tab-week');el.innerHTML='<p class="empty">데이터를 불러오지 못했습니다 ('+esc(e.message)+').<br><a href="javascript:void(0)" onclick="loadLatest()">다시 시도</a></p>';}
+function showTab(id){var tabs=['week','archive','search','sources'];
+ for(var i=0;i<tabs.length;i++){var t=tabs[i];document.getElementById('tab-'+t).hidden=(t!==id);var nb=document.getElementById('nb-'+t);nb.className=(t===id)?'on':'';}
+ if(id==='archive'){renderArchive();}
+ if(id==='sources'){renderSources();}}
+document.getElementById('q').addEventListener('keydown',function(e){if(e.key==='Enter'){dbSearch();}});
+loadLatest();
+</script>
+</body>
+</html>
