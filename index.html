@@ -295,7 +295,7 @@ function subscribe(){var e=document.getElementById('subEmail');var n=document.ge
  fetch(SB+'/rest/v1/tcim_subscribers',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(body)})
   .then(function(r){btn.disabled=false;
    if(r.status===201||r.status===204){msg.textContent='접수되었습니다. 운영자 승인 후 다음 호부터 발송됩니다.';e.value='';n.value='';return;}
-   if(r.status===409){msg.textContent='이미 신청된 주소입니다. 승인을 기다려 주세요.';return;}
+   if(r.status===409){msg.textContent='이미 등록된 주소입니다. 승인을 기다리는 중이거나 이미 구독 중일 수 있습니다. 수신 중단 후 다시 받고 싶으시면 받으셨던 메일에 회신해 주세요.';return;}
    msg.textContent='접수하지 못했습니다 (오류 '+r.status+'). 잠시 후 다시 시도해 주세요.';})
   .catch(function(){btn.disabled=false;msg.textContent='네트워크 오류로 접수하지 못했습니다.';});}
 function showTab(id){var tabs=['week','archive','search','sources','subscribe'];
