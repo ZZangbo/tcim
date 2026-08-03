@@ -187,6 +187,7 @@ function renderWeek(){var b=state.briefing;var el=document.getElementById('tab-w
  el.innerHTML=h;}
 function issueUrl(n){return location.origin+location.pathname+'?issue='+n;}
 function pinUrl(b){if(!b||window.history===undefined||!history.replaceState){return;}
+ if(initialTab){return;} // ?tab= 로 들어온 첫 화면에서는 주소를 바꾸지 않는다. 새로고침해도 그 탭에 남아야 한다
  try{history.replaceState(null,'',issueUrl(b.issue_no));}catch(e){}}
 function paramIssue(){var m=/[?&]issue=(\d+)/.exec(location.search);if(!m){m=/[#&?]issue=(\d+)/.exec(location.hash);}
  return m?parseInt(m[1],10):null;}
@@ -195,7 +196,7 @@ function copyLink(){var b=state.briefing;if(!b){return;}var u=issueUrl(b.issue_n
  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(function(){done(true);},function(){done(false);});}else{done(false);}}
 function openIssue(id){var b=null;for(var i=0;i<state.briefings.length;i++){if(state.briefings[i].id===id){b=state.briefings[i];}}
  if(!b){return;}state.briefing=b;pinUrl(b);
- api('tcim_briefing_items?select=block,rank,item:tcim_items(*,source:tcim_sources(name))&briefing_id=eq.'+id+'&order=rank.asc').then(function(rows){state.rows=rows;renderWeek();showTab('week');}).catch(showErr);}
+ api('tcim_briefing_items?select=block,rank,item:tcim_items(*,source:tcim_sources(name))&briefing_id=eq.'+id+'&order=rank.asc').then(function(rows){state.rows=rows;renderWeek();applyInitialTab();}).catch(showErr);}
 function boot(){api('tcim_briefings?select=*&order=issue_no.desc').then(function(bs){
  if(!bs.length){document.getElementById('tab-week').innerHTML='<p class="empty">아직 발행된 브리핑이 없습니다. 첫 발행은 월요일 08:00입니다.</p>';document.getElementById('issueInfo').textContent='발행 전';return;}
  state.briefings=bs;state.latestId=bs[0].id;
@@ -305,9 +306,15 @@ function showTab(id){var tabs=['week','archive','search','sources','subscribe'];
 document.getElementById('q').addEventListener('keydown',function(e){if(e.key==='Enter'){dbSearch();}});
 document.getElementById('subEmail').addEventListener('keydown',function(e){if(e.key==='Enter'){subscribe();}});
 // ?tab=subscribe 로 구독 탭에 바로 들어온다. 안내 메일에서 링크 한 번으로 폼에 닿게 하려는 것이다.
-(function(){var m=/[?&]tab=([a-z]+)/.exec(location.search);if(!m){return;}
- var t=m[1];if(['week','archive','search','sources','subscribe'].indexOf(t)<0){return;}
- showTab(t);if(t==='subscribe'){var el=document.getElementById('subEmail');if(el){el.focus();}}})();
+// boot() 이 데이터를 받아온 뒤 openIssue() 안에서 탭을 다시 그리므로, 여기서 바로 showTab 을
+// 부르면 잠깐 보였다가 브리핑 탭으로 덮인다. 그래서 값만 기억해 두고 그 시점에 적용한다.
+var initialTab=(function(){var m=/[?&]tab=([a-z]+)/.exec(location.search);
+ if(!m){return null;}
+ return ['week','archive','search','sources','subscribe'].indexOf(m[1])>=0?m[1]:null;})();
+function applyInitialTab(){var t=initialTab;initialTab=null;
+ showTab(t||'week');
+ if(t==='subscribe'){var el=document.getElementById('subEmail');if(el){el.focus();}}}
+if(initialTab){showTab(initialTab);} // 로딩 동안 미리 보여준다. 최종 적용은 applyInitialTab
 boot();
 </script>
 </body>
