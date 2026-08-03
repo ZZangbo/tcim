@@ -31,13 +31,20 @@
 
 ## 1단계 — 준비
 
-1. `select coalesce(max(issue_no),-1), max(period_end) from tcim_briefings` → 새 `issue_no` = max+1.
-2. 수집 기간 = (직전 `period_end` 다음날) ~ 어제(KST). briefings가 비어 있으면 최근 14일.
-3. **★격주 발행 가드.** 직전 `period_end`로부터 13일이 지나지 않았으면 **이번 회차는 발행하지 않는다.** 수집도 시작하지 말고 즉시 종료하며, **PushNotification도 보내지 않는다.** 쉬는 주에 알림이 가면 소음이 된다. 세션 응답에만 `격주 주기 — 이번 주는 건너뜀 (다음 발행 M/D)`이라고 한 줄 남긴다.
+1. `select coalesce(max(issue_no),-1) as last_issue, max(period_end) as last_end from tcim_briefings` 로 직전 상태를 읽는다.
+2. **날짜 계산을 손으로 하지 않는다.** clone한 저장소에서 아래를 실행하고 그 JSON을 그대로 따른다. 설치는 필요 없다(표준 라이브러리만 쓴다).
+
+   ```bash
+   cd /tmp/tcim && python3 -m tcim plan --today YYYY-MM-DD --last-end YYYY-MM-DD --last-issue N
+   ```
+
+   `should_publish`, `notify`, `reason`, `issue_no`, `period_start`, `period_end`, `week_no`, `backfill`, `next_publish` 가 나온다. briefings가 비어 있으면 `--last-end`와 `--last-issue`를 생략한다. `--today`는 KST 기준 실행일이고 수집 기간의 끝은 그 전날이다.
+3. **★격주 발행 가드.** `should_publish`가 false면 **이번 회차는 발행하지 않는다.** 수집도 시작하지 말고 즉시 종료한다. 이때 `notify`도 false이므로 **PushNotification을 보내지 않는다.** 쉬는 주에 알림이 가면 소음이 된다. 세션 응답에만 `격주 주기 — 이번 주는 건너뜀 (다음 발행 M/D)`이라고 한 줄 남기고, 날짜는 `next_publish`를 쓴다.
    - 스케줄은 매주 도는데 발행만 격주인 구조다. 크론으로는 "2주에 한 번"을 표현할 수 없어서, 매주 깨어난 뒤 직전 발행일과의 간격으로 판단한다. 이 방식은 한 주 실행이 실패해도 다음 주가 자동으로 이어받는다는 이점이 있다.
    - 13일로 잡은 이유는 실행 시각이 밀리거나 앞당겨져도 격주 리듬이 한 주씩 밀리지 않게 하기 위해서다. 14일로 잡으면 몇 분 차이로 한 주를 통째로 거를 수 있다.
-4. **기간 시작이 어제보다 늦으면(이미 커버됨) 발행하지 말고** 최종 메시지에 "신규 기간 없음"이라고만 보고하고 끝낸다.
-5. 직전 발행이 예정 주기보다 오래됐으면(예: 실행 실패로 결번 발생) 빠진 구간 전체를 한 호로 백필하고 `stats`에 `backfill: true`를 남긴다.
+   - 이 규칙의 구현은 `tcim/plan.py`이고 `tests/test_plan.py`가 지킨다. **규칙을 바꾸려면 이 문서와 그 두 파일을 함께 고친다.** 한쪽만 고치면 어긋난 채로 두 주가 지나간다.
+4. `reason`이 `신규 기간 없음`이면 이미 커버된 구간이다. 발행하지 말고 최종 메시지에 그대로 보고하고 끝낸다.
+5. `backfill`이 true면 실행 실패로 결번이 생겨 빠진 구간을 한 호로 합치는 회차다. `stats`에 `backfill: true`를 남긴다. `issue_no`는 결번을 만들지 않고 하나만 증가한다.
 6. `select id,name,type,endpoint,default_region,default_section,lang,active,fail_count,notes from tcim_sources order by id` → 수집 계획 수립. `active=true`만 대상이고, `endpoint`와 `notes`에 소스별 호출 방법이 적혀 있다.
 
 ---
@@ -166,9 +173,21 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
 1. `select email from tcim_subscribers where status='approved' order by id` → 승인된 수신자. **0명이면 초안을 만들지 말고 이 단계를 건너뛴다.**
 2. `to`에는 사용자 본인(`jbh8284@gmail.com`)만 넣고, 승인된 수신자는 **전원 `bcc`**에 넣는다. 수신자끼리 주소가 보이면 안 되므로 `to`나 `cc`에 넣지 않는다. 단 **본인 주소가 승인 목록에 있으면 `bcc`에서는 뺀다.** 같은 사람에게 두 번 가지 않게 한다.
 3. `subject`: `TCIM 브리핑 제N호 — (헤드라인1 축약), (헤드라인2 축약) (M/D~M/D)`
-4. **`htmlBody`와 `body`를 둘 다 채운다.** 본체는 `htmlBody`이고 `body`는 평문 대체본이다.
-   - `htmlBody`는 저장소의 `email-template.html`을 뼈대로 쓴다. `{{ISSUE_NO}}`, `{{PERIOD}}`, `{{INTRO}}`, `{{COUNTS}}`를 채우고 카드 블록을 헤드라인 수만큼 복제한다.
-   - 카드 좌측 색띠와 라벨 색은 섹션에 맞춘다. policy `#0f6b5c`, evidence `#3554a5`, jobs `#a05a1f`.
+4. **HTML을 손으로 조립하지 않는다.** 호 데이터를 JSON으로 쓴 뒤 아래를 실행한다.
+
+   ```bash
+   cd /tmp/tcim && python3 -m tcim build --data issue.json --template email-template.html --approved N --out ./out
+   ```
+
+   `issue.json`에 넣을 것: `issue_no`, `period_start`, `period_end`, `intro`, `counts`, `subject_headlines`(제목줄용 20자 안팎 축약 2개), `recipients`(승인 수신자 주소 배열), `headlines`(각 항목에 `title_ko`, `summary_ko`, `section`, `region`). 축약과 요약은 판단이라 여기서 만들어 넣는다.
+
+   나오는 것: `out/mail.html`, `out/mail.txt`, 그리고 stdout에 제목과 프리플라이트 결과. **`preflight.ok`가 false면 초안을 만들지 말고 실패 사유를 알림에 적는다.** 종료 코드도 1이다.
+
+   `create_draft`의 `htmlBody`에 `mail.html`을, `body`에 `mail.txt`를 그대로 넣는다. `subject`도 stdout의 값을 쓴다.
+
+   - 프리플라이트가 보는 것과 그 이유는 `DESIGN.md`에 있다. 배경색 선언, 흰 글자, 어두운 `bgcolor`, 맨 URL 앵커, 어긋난 `?issue=N`, 미치환 자리표시자, 수신 중단 문구 누락, 수신자 수 불일치를 잡는다.
+   - `List-Unsubscribe` 헤더는 `build`가 계산해 주지만 `create_draft`로는 넣을 수 없다. 4단계(`send.py`)가 붙은 뒤부터 실제로 실린다.
+   - 카드 좌측 색띠와 라벨 색은 `render.py`가 섹션에 맞춰 넣는다. policy `#0f6b5c`, evidence `#3554a5`, jobs `#a05a1f`.
    - **각 항목 요약은 2~3문장으로 쓴다.** 한 줄로 줄이지 않는다. DB의 `summary_ko`를 메일 문장으로 다듬어 쓰되 사실을 바꾸지 않는다.
    - **링크는 절대 맨 URL로 쓰지 않는다.** 반드시 `<a href="https://zzangbo.github.io/tcim/?issue=N">제N호 전체 보기</a>` 형태의 앵커 텍스트로 넣는다. 평문에 맨 URL을 두면 메일 클라이언트가 `google.com/url?q=...` 리다이렉트로 감싸서 본문에 흉한 긴 문자열이 그대로 보인다.
    - 외부 이미지나 웹폰트를 넣지 않는다. 스타일은 전부 인라인으로 두고 표 기반 레이아웃을 유지한다. 네이버와 다음 웹메일에서 깨지지 않아야 한다.
@@ -232,6 +251,9 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 발행 주기를 매주에서 격주로 바꿨다. 크론은 매주 그대로 두고 1단계의 13일 가드로 판단한다. 쉬는 회차는 알림을 보내지 않는다.
 - **2026-08-03** Gmail 발송 파이프라인이 HTML 의 `background` 와 `background-color` 선언을 전부 제거한다. 실제 발송본에서 확인했다. `border`, `color`, `padding`, `border-radius` 는 살아남는다. 메일 디자인은 배경색 없이도 읽히게 만들어야 하고 흰 글자를 쓰면 안 된다.
 - **2026-08-03** Gmail 은 본문의 링크 href 를 `google.com/url?q=...` 로 감싼다. 보내는 쪽에서 끌 수 없다. 앵커 텍스트를 쓰면 본문에 긴 주소가 보이지는 않는다.
+- **2026-08-03** 결정적인 계층을 `tcim/` 패키지로 내렸다. `plan`(날짜와 격주 가드), `render`(메일 조립), `preflight`(발송 전 검사). 표준 라이브러리만 쓰므로 clone 직후 설치 없이 돈다. 판단은 그대로 이 문서가 맡는다. 무엇을 왜 내렸는지는 `DESIGN.md`.
+- **2026-08-03** 메일 템플릿 상단의 내부 주석이 발송본에 그대로 실려 나가고 있었다. 배경색 제약과 자리표시자 목록이 구독자에게 갔다. `render`가 주석을 떼고 내보낸다.
+- **2026-08-03** v2 템플릿의 가시 링크에 `?issue=2`가 하드코딩돼 있었다. 제3호부터 제2호로 연결됐을 것이다. 프리플라이트가 href와 가시 텍스트를 모두 대조한다.
 - **2026-08-03** 절차 문서와 스케줄 작업 프롬프트를 따로 고치면 어긋난다. SUBSCRIBERS.md 에 수신 중단 회신 확인을 넣었는데 8분 먼저 만들어진 일일 점검 작업 프롬프트에는 그 단계가 없었고, 양쪽의 '조용한 날엔 알리지 않는다' 규칙이 '중단은 반드시 알린다'와 충돌해 중단이 조용히 처리될 뻔했다. **절차를 바꾸면 그것을 실행하는 작업 프롬프트의 단계 열거와 알림 규칙도 같이 본다.**
 - **2026-08-03** 수신 중단 회신 검색(`subject:TCIM`)에 브리핑 사본이 걸린다. 사용자가 다른 주소에서 자기에게 보낸 것이라 보낸 사람 대조로도 안 걸러진다. 본문에 사람이 쓴 문장이 있는지로 판별한다. SUBSCRIBERS.md 4번 참고.
 - **2026-08-03** 샌드박스 브라우저는 외부망이 막혀 있다. 웹앱을 브라우저로 검증하려면 Playwright 라우트 가로채기로 Supabase 응답을 대신 넣어야 한다.
