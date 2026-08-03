@@ -13,6 +13,7 @@
 - `index.html` — 웹앱 전체. 빌드 없음, GitHub Pages가 그대로 서빙
 - `RUNBOOK.md` — 격주 수집과 발행 파이프라인의 원본 규칙
 - `schema.sql` — Supabase 스키마와 RLS 참조본
+- `ABOUT.md` — 목적과 범위, 수집 방법, 알려진 한계 (공유용 설명서)
 - `CLAUDE.md` — 작업 맥락
 
-구조와 손대는 순서는 `CLAUDE.md`를 먼저 읽으세요.
+이 브리핑이 무엇이고 무엇을 담지 않는지는 [`ABOUT.md`](ABOUT.md)에 정리돼 있습니다. 코드 구조와 손대는 순서는 `CLAUDE.md`를 먼저 읽으세요.
