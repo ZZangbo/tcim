@@ -134,8 +134,14 @@
 
 1. `select email from tcim_subscribers where status='approved' order by id` → 승인된 수신자. **0명이면 초안을 만들지 말고 이 단계를 건너뛴다.**
 2. `to`에는 사용자 본인(`jbh8284@gmail.com`)만 넣고, 승인된 수신자는 **전원 `bcc`**에 넣는다. 수신자끼리 주소가 보이면 안 되므로 `to`나 `cc`에 넣지 않는다. 단 **본인 주소가 승인 목록에 있으면 `bcc`에서는 뺀다.** 같은 사람에게 두 번 가지 않게 한다.
-3. `subject`: `TCIM 위클리 제N호 (M/D~M/D)`
-4. `body`: 헤드라인 3~5건을 각각 제목 1줄과 요약 1줄로 쓰고, 마지막에 이번 호 고정 링크 `https://zzangbo.github.io/tcim/?issue=N`을 넣는다. 맨 끝에 `수신을 중단하시려면 이 메일에 회신해 주세요.` 1줄. 시사점과 소스 현황은 넣지 않는다.
+3. `subject`: `TCIM 위클리 제N호 — (헤드라인1 축약), (헤드라인2 축약) (M/D~M/D)`
+4. **`htmlBody`와 `body`를 둘 다 채운다.** 본체는 `htmlBody`이고 `body`는 평문 대체본이다.
+   - `htmlBody`는 저장소의 `email-template.html`을 뼈대로 쓴다. `{{ISSUE_NO}}`, `{{PERIOD}}`, `{{INTRO}}`, `{{COUNTS}}`를 채우고 카드 블록을 헤드라인 수만큼 복제한다.
+   - 카드 좌측 색띠와 라벨 색은 섹션에 맞춘다. policy `#0f6b5c`, evidence `#3554a5`, jobs `#a05a1f`.
+   - **각 항목 요약은 2~3문장으로 쓴다.** 한 줄로 줄이지 않는다. DB의 `summary_ko`를 메일 문장으로 다듬어 쓰되 사실을 바꾸지 않는다.
+   - **링크는 절대 맨 URL로 쓰지 않는다.** 반드시 `<a href="https://zzangbo.github.io/tcim/?issue=N">제N호 전체 보기</a>` 형태의 앵커 텍스트로 넣는다. 평문에 맨 URL을 두면 메일 클라이언트가 `google.com/url?q=...` 리다이렉트로 감싸서 본문에 흉한 긴 문자열이 그대로 보인다.
+   - 외부 이미지나 웹폰트를 넣지 않는다. 스타일은 전부 인라인으로 두고 표 기반 레이아웃을 유지한다. 네이버와 다음 웹메일에서 깨지지 않아야 한다.
+   - 맨 끝에 `수신을 중단하시려면 이 메일에 회신해 주세요.` 1줄. 시사점과 소스 현황은 넣지 않는다.
 5. 실제 발송 여부를 알 수 없으므로 `last_sent_at`은 갱신하지 않는다.
 6. `select count(*) from tcim_subscribers where status='pending'`. 1건 이상이면 최종 메시지 끝에 `구독 신청 N건 대기`를 덧붙인다.
 
