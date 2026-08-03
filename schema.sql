@@ -99,6 +99,7 @@ create table if not exists public.tcim_subscribers (
   created_at   timestamptz not null default now(),
   approved_at  timestamptz,
   last_sent_at timestamptz,
+  welcomed_at  timestamptz,          -- 환영 메일 초안을 만든 시각. 중복 생성 방지용
   constraint tcim_subscribers_status_chk check (status in ('pending','approved','rejected','unsubscribed')),
   constraint tcim_subscribers_email_chk  check (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' and length(email) <= 254),
   constraint tcim_subscribers_note_chk   check (note is null or length(note) <= 200)
