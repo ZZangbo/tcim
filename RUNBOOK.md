@@ -1,6 +1,6 @@
-# TCIM Global Watch — 주간 브리핑 런북
+# TCIM Global Watch — 격주 브리핑 런북
 
-이 문서가 **파이프라인의 유일한 원본**이다. 매주 월요일 07:00 KST에 클라우드 스케줄 작업이 이 저장소를 clone해서 이 파일을 읽고 그대로 실행한다.
+이 문서가 **파이프라인의 유일한 원본**이다. 클라우드 스케줄 작업이 **매주** 월요일 07:00 KST에 이 저장소를 clone해서 이 파일을 읽고 실행하지만, **발행은 격주(2주에 1회)**다. 매주 깨어나되 격주로만 발행하는 이유는 1단계에 적혀 있다.
 
 규칙을 바꾸려면 **이 파일을 고쳐 커밋**하면 된다. 스케줄 작업 프롬프트는 손대지 않는다.
 
@@ -8,7 +8,7 @@
 
 ## 0. 이 실행의 성격
 
-사용자 장보형(전통의학과 보완통합의학 정책 연구자)을 위해 지난 한 주의 글로벌 동향을 수집해 한국어로 요약하고 Supabase에 발행한다. 세션은 매주 새로 시작되며 과거 기억이 없다. 이 문서가 전부다.
+사용자 장보형(전통의학과 보완통합의학 정책 연구자)을 위해 직전 발행 이후의 글로벌 동향을 수집해 한국어로 요약하고 Supabase에 발행한다. 세션은 매주 새로 시작되며 과거 기억이 없다. 이 문서가 전부다.
 
 전 과정은 공개 자료의 개인 연구 목적 수집과 정리다.
 
@@ -32,10 +32,13 @@
 ## 1단계 — 준비
 
 1. `select coalesce(max(issue_no),-1), max(period_end) from tcim_briefings` → 새 `issue_no` = max+1.
-2. 수집 기간 = (직전 `period_end` 다음날) ~ 어제(KST). briefings가 비어 있으면 최근 7일.
-3. **기간 시작이 어제보다 늦으면(이미 커버됨) 발행하지 말고** 최종 메시지에 "신규 기간 없음"이라고만 보고하고 끝낸다.
-4. 직전 발행이 1주보다 오래됐으면 결번 구간 전체를 한 호로 백필하고 `stats`에 `backfill: true`를 남긴다.
-5. `select id,name,type,endpoint,default_region,default_section,lang,active,fail_count,notes from tcim_sources order by id` → 수집 계획 수립. `active=true`만 대상이고, `endpoint`와 `notes`에 소스별 호출 방법이 적혀 있다.
+2. 수집 기간 = (직전 `period_end` 다음날) ~ 어제(KST). briefings가 비어 있으면 최근 14일.
+3. **★격주 발행 가드.** 직전 `period_end`로부터 13일이 지나지 않았으면 **이번 회차는 발행하지 않는다.** 수집도 시작하지 말고 즉시 종료하며, **PushNotification도 보내지 않는다.** 쉬는 주에 알림이 가면 소음이 된다. 세션 응답에만 `격주 주기 — 이번 주는 건너뜀 (다음 발행 M/D)`이라고 한 줄 남긴다.
+   - 스케줄은 매주 도는데 발행만 격주인 구조다. 크론으로는 "2주에 한 번"을 표현할 수 없어서, 매주 깨어난 뒤 직전 발행일과의 간격으로 판단한다. 이 방식은 한 주 실행이 실패해도 다음 주가 자동으로 이어받는다는 이점이 있다.
+   - 13일로 잡은 이유는 실행 시각이 밀리거나 앞당겨져도 격주 리듬이 한 주씩 밀리지 않게 하기 위해서다. 14일로 잡으면 몇 분 차이로 한 주를 통째로 거를 수 있다.
+4. **기간 시작이 어제보다 늦으면(이미 커버됨) 발행하지 말고** 최종 메시지에 "신규 기간 없음"이라고만 보고하고 끝낸다.
+5. 직전 발행이 예정 주기보다 오래됐으면(예: 실행 실패로 결번 발생) 빠진 구간 전체를 한 호로 백필하고 `stats`에 `backfill: true`를 남긴다.
+6. `select id,name,type,endpoint,default_region,default_section,lang,active,fail_count,notes from tcim_sources order by id` → 수집 계획 수립. `active=true`만 대상이고, `endpoint`와 `notes`에 소스별 호출 방법이 적혀 있다.
 
 ---
 
@@ -85,10 +88,10 @@
 
 **검색은 라벨 ID가 아니라 라벨명으로 해야 동작한다.** 라벨 ID(`label:Label_...`) 쿼리는 0건을 반환하므로 쓰지 않는다.
 
-- `label:TCIM-Jobs newer_than:8d` (채용 알림)
-- `label:TCIM-News newer_than:8d` (뉴스레터)
+- `label:TCIM-Jobs newer_than:15d` (채용 알림)
+- `label:TCIM-News newer_than:15d` (뉴스레터)
 
-백필 주에는 `newer_than` 값을 기간에 맞춰 늘린다.
+`newer_than` 값은 항상 수집 기간보다 하루 이틀 넉넉하게 잡는다. 백필 회차에는 기간에 맞춰 더 늘린다.
 
 ### Bluesky (보조)
 
@@ -134,7 +137,7 @@
 
 1. `select email from tcim_subscribers where status='approved' order by id` → 승인된 수신자. **0명이면 초안을 만들지 말고 이 단계를 건너뛴다.**
 2. `to`에는 사용자 본인(`jbh8284@gmail.com`)만 넣고, 승인된 수신자는 **전원 `bcc`**에 넣는다. 수신자끼리 주소가 보이면 안 되므로 `to`나 `cc`에 넣지 않는다. 단 **본인 주소가 승인 목록에 있으면 `bcc`에서는 뺀다.** 같은 사람에게 두 번 가지 않게 한다.
-3. `subject`: `TCIM 위클리 제N호 — (헤드라인1 축약), (헤드라인2 축약) (M/D~M/D)`
+3. `subject`: `TCIM 브리핑 제N호 — (헤드라인1 축약), (헤드라인2 축약) (M/D~M/D)`
 4. **`htmlBody`와 `body`를 둘 다 채운다.** 본체는 `htmlBody`이고 `body`는 평문 대체본이다.
    - `htmlBody`는 저장소의 `email-template.html`을 뼈대로 쓴다. `{{ISSUE_NO}}`, `{{PERIOD}}`, `{{INTRO}}`, `{{COUNTS}}`를 채우고 카드 블록을 헤드라인 수만큼 복제한다.
    - 카드 좌측 색띠와 라벨 색은 섹션에 맞춘다. policy `#0f6b5c`, evidence `#3554a5`, jobs `#a05a1f`.
@@ -167,7 +170,7 @@
 `PushNotification`의 message를 `<routine_summary>` 태그로 감싸고 내용은 정확히 이 형식으로 한다.
 
 ```
-TCIM 위클리 제N호 발행 완료 (M/D~M/D, 선별 Y건)
+TCIM 브리핑 제N호 발행 완료 (M/D~M/D, 선별 Y건)
 헤드라인: (제목1), (제목2), (제목3)
 https://zzangbo.github.io/tcim/?issue=N
 ```
@@ -191,6 +194,7 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 복지부 보도자료는 robots.txt로 WebFetch가 차단된다.
 - **2026-08-03** KIOM 채용게시판은 본문이 렌더되지 않는다.
 - **2026-08-03** 이 클라우드 환경은 `tcim_private_config.github_token`으로 저장소에 직접 커밋하고 푸시할 수 있다. 단 GitHub REST API는 프록시에 막혀 있고 git over HTTPS만 동작한다.
+- **2026-08-03** 발행 주기를 매주에서 격주로 바꿨다. 크론은 매주 그대로 두고 1단계의 13일 가드로 판단한다. 쉬는 회차는 알림을 보내지 않는다.
 - **2026-08-03** Gmail 발송 파이프라인이 HTML 의 `background` 와 `background-color` 선언을 전부 제거한다. 실제 발송본에서 확인했다. `border`, `color`, `padding`, `border-radius` 는 살아남는다. 메일 디자인은 배경색 없이도 읽히게 만들어야 하고 흰 글자를 쓰면 안 된다.
 - **2026-08-03** Gmail 은 본문의 링크 href 를 `google.com/url?q=...` 로 감싼다. 보내는 쪽에서 끌 수 없다. 앵커 텍스트를 쓰면 본문에 긴 주소가 보이지는 않는다.
 - **2026-08-03** 샌드박스 브라우저는 외부망이 막혀 있다. 웹앱을 브라우저로 검증하려면 Playwright 라우트 가로채기로 Supabase 응답을 대신 넣어야 한다.
