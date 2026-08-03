@@ -21,6 +21,11 @@ import urllib.request
 
 RESEND_ENDPOINT = "https://api.resend.com/emails"
 
+# ★반드시 보내야 한다. api.resend.com 은 Cloudflare 뒤에 있고, urllib 의 기본
+# User-Agent(`Python-urllib/3.x`)로 요청하면 봇으로 분류돼 **403 error 1010** 이 온다.
+# 2026-08-03 실측이다. 값 자체는 아무거나 되지만 비어 있으면 안 된다.
+USER_AGENT = "tcim-global-watch/1.0"
+
 # Resend 는 초당 요청 수에 제한이 있다. 정확한 값에 기대지 않고 넉넉히 벌린다.
 # 4명이면 체감이 없고 100명이어도 1분이다.
 DEFAULT_SLEEP = 0.6
@@ -36,6 +41,7 @@ class SendError(Exception):
 def _http_post(url: str, payload: dict, headers: dict) -> tuple[int, dict]:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("User-Agent", USER_AGENT)
     for key, value in headers.items():
         req.add_header(key, value)
     try:

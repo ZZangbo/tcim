@@ -270,6 +270,8 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 발행 주기를 매주에서 격주로 바꿨다. 크론은 매주 그대로 두고 1단계의 13일 가드로 판단한다. 쉬는 회차는 알림을 보내지 않는다.
 - **2026-08-03** Gmail 발송 파이프라인이 HTML 의 `background` 와 `background-color` 선언을 전부 제거한다. 실제 발송본에서 확인했다. `border`, `color`, `padding`, `border-radius` 는 살아남는다. 메일 디자인은 배경색 없이도 읽히게 만들어야 하고 흰 글자를 쓰면 안 된다.
 - **2026-08-03** Gmail 은 본문의 링크 href 를 `google.com/url?q=...` 로 감싼다. 보내는 쪽에서 끌 수 없다. 앵커 텍스트를 쓰면 본문에 긴 주소가 보이지는 않는다.
+- **2026-08-03** ★`api.resend.com` 은 Cloudflare 뒤에 있어서 **urllib 기본 User-Agent(`Python-urllib/3.x`)로 요청하면 403 error 1010** 이 온다. 아무 값이나 UA 를 넣으면 통과한다. `send.py` 의 `USER_AGENT` 상수이고 회귀 테스트가 지킨다. 다른 API 를 붙일 때도 같은 함정을 밟을 수 있다.
+- **2026-08-03** 테스트 발송은 `issue_no=0` 으로 보낸다. 실제 호 번호로 테스트하면 `Idempotency-Key` 가 겹쳐서 **나중에 진짜 발송이 중복으로 걸러져 조용히 안 나간다.**
 - **2026-08-03** 발송 경로를 확정했다. Resend HTTPS API(`news.jbhlab.com` 발신) + Cloudflare Email Routing(`tcim@jbhlab.com` 수신 포워딩). 둘 다 무료다. **발신과 수신을 다른 이름에 둔 이유는 SPF 레코드가 겹치지 않게 하려는 것**이고, 회신 주소가 따로 필요한 이유는 발신 도메인에 MX가 없어 거기로는 회신을 못 받기 때문이다. Cloudflare Email Service(발신)는 Workers Paid 월 $5에 포함량이 Resend 무료와 같아 탈락했다.
 - **2026-08-03** `_dmarc.jbhlab.com`에 `p=reject`가 이미 걸려 있다(등록업체 기본값). **인증을 붙이기 전에 그 도메인 이름으로 보내면 스팸함이 아니라 거부된다.** 반대로 인증이 붙으면 유리한 출발선이 된다.
 - **2026-08-03** BCC 묶음을 버리고 수신자당 한 통씩 보낸다. ESP를 쓰면 그쪽이 낫다 — 수신자별 성공과 실패를 정확히 알 수 있고, 한 명이 실패해도 나머지가 나간다.

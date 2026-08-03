@@ -169,6 +169,41 @@ class TestDryRun(unittest.TestCase):
         self.assertEqual(out["skipped"], 2)
         self.assertTrue(out["dry_run"])
 
+class TestTransportHeaders(unittest.TestCase):
+    """실제 HTTP 계층. api.resend.com 이 Cloudflare 뒤에 있어 UA 가 없으면 403 이 온다."""
+
+    def test_기본_UA_로는_요청하지_않는다(self):
+        import urllib.request
+
+        from tcim import send as send_mod
+
+        captured = {}
+
+        class FakeResp:
+            status = 200
+
+            def read(self):
+                return b'{"id":"x"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(req, timeout=None):
+            captured["ua"] = req.get_header("User-agent")
+            return FakeResp()
+
+        original = urllib.request.urlopen
+        urllib.request.urlopen = fake_urlopen
+        try:
+            send_mod._http_post("https://api.resend.com/emails", {}, {"Authorization": "Bearer x"})
+        finally:
+            urllib.request.urlopen = original
+
+        self.assertTrue(captured["ua"])
+        self.assertNotIn("urllib", captured["ua"].lower())
 
 if __name__ == "__main__":
     unittest.main()
