@@ -80,6 +80,26 @@ id 39에서 걸린 항목은 **정책 직접성이 없어도 헤드라인 후보
 - 본부 뉴스 RSS(`https://www.who.int/rss-feeds/news-english.xml`)는 **2026-08 기준 최신 항목이 5월에 멈춰 있어 신뢰할 수 없다.** 확인은 하되 WHO 뉴스는 반드시 WebSearch(`site:who.int` 포함)로 병행한다.
 - SEARO `https://www.who.int/southeastasia/news`, EMRO `https://www.emro.who.int/media/news/` 간단 확인. EMRO는 페이지가 정체돼 있을 수 있다.
 
+### 유럽 (id 40)
+
+EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/committee-herbal-medicinal-products-hmpc`를 WebFetch한다. 월례 전원회의 아젠다와 회의록, 허브 모노그래프 채택 현황이 올라온다. 기간 내 신규 문서만 채택한다.
+
+유럽은 키워드 검색만으로는 잘 잡히지 않아 기관을 직접 지정한 소스다. 유럽 공백이 계속되면 EDQM이나 각국 규제기관(독일 BfArM, 영국 MHRA)을 같은 방식으로 추가하는 것이 검색어를 늘리는 것보다 낫다.
+
+### ★지역 전수 확인 (매 회차 필수)
+
+**7개 지역 모두에 대해 최소 1회씩 지역 지정 검색을 수행한다.** 일반 키워드 검색 결과에 우연히 그 지역이 잡히기를 기다리지 않는다. `site:` 지정이나 지역명을 넣은 검색을 각 지역마다 한 번씩은 돌린다.
+
+그리고 `regional_notes`에 **확인한 결과와 확인하지 못한 것을 구분해서** 적는다.
+
+- 소식이 있으면: 그 내용을 한 줄로
+- 확인했으나 없으면: `확인함, 해당 기간 소식 없음`
+- 확인 자체를 못 했으면: `수집 실패 — (사유)`
+
+지금까지 `—` 하나로 뭉뚱그려 온 탓에 **실제로 소식이 없었던 것인지 훑지 않은 것인지 구분되지 않았다.** 이 구분이 회차를 거듭하며 쌓이면 어느 지역의 어느 소스를 보강해야 하는지가 드러난다. 그냥 `—`만 남기지 말 것.
+
+**알아둘 구조적 제약:** 이 환경의 WebSearch는 미국 로케일 결과를 돌려준다. 영어와 미국에서 색인된 자료가 구조적으로 유리하고, 비영어권 지역 뉴스는 검색어를 아무리 다듬어도 덜 잡힌다. 지역 편차를 완전히 없앨 수는 없으므로, **기관을 직접 지정하는 소스를 늘리는 방향**이 검색어를 늘리는 것보다 효과가 크다.
+
 ### 한국
 
 - KIOM 채용 `https://kiom.re.kr/menu.es?mid=a10503020000` — 본문 미렌더 이력 있음
@@ -131,7 +151,7 @@ id 39에서 걸린 항목은 **정책 직접성이 없어도 헤드라인 후보
 `execute_sql`을 쓴다. 긴 한국어 문자열은 `$q$...$q$` 달러 인용을 쓰면 따옴표 이스케이프 문제가 없다.
 
 1. **tcim_items insert**: `(source_id, title, title_ko, url, published_at, section, region, countries, tags, summary_ko, lang, score, week_no)`. `source_id`는 `tcim_sources` 매칭(없으면 null), `week_no`는 `period_end` 기준 ISO 주 `'YYYY-Www'`. `on conflict (url) do nothing`을 쓴다.
-2. **tcim_briefings insert**: `issue_no, period_start, period_end, headline_md, regional_notes, implication_md, stats, published_at=now()`. `regional_notes`는 7개 지역 각 1줄 한국어 jsonb이고 소식 없는 지역은 `'—'`. `implication_md`는 시사점 3~5문장. `stats`는 `{"collected":n,"selected":n,"sources_ok":[...],"sources_failed":[...]}`.
+2. **tcim_briefings insert**: `issue_no, period_start, period_end, headline_md, regional_notes, implication_md, stats, published_at=now()`. `regional_notes`는 7개 지역 각 1줄 한국어 jsonb. **소식 없는 지역도 `—`로 두지 말고 `확인함, 해당 기간 소식 없음` 또는 `수집 실패 — (사유)`로 구분해 적는다**(2단계의 지역 전수 확인 참고). `implication_md`는 시사점 3~5문장. `stats`는 `{"collected":n,"selected":n,"sources_ok":[...],"sources_failed":[...]}`.
 3. **tcim_briefing_items insert**: url로 `tcim_items`의 id를 조인해 `(briefing_id, item_id, block, rank)`를 연결한다. 같은 항목이 headline과 섹션 블록에 중복 연결되는 것은 정상이다.
 4. **tcim_sources update**: 성공 소스는 `last_ok_at=now()`, 실패 소스는 `fail_count=fail_count+1`. `fail_count`가 3 이상이 된 소스는 `implication_md` 끝에 `소스 점검 필요: (이름)` 1줄을 추가한다. 소스 동작 방식에 대해 새로 알아낸 사실은 `notes`에 날짜와 함께 덧붙인다.
 5. **검증**: `select count(*) from tcim_briefing_items where briefing_id=(이번 호 id)`로 연결 수를 확인한다.
@@ -202,6 +222,8 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 복지부 보도자료는 robots.txt로 WebFetch가 차단된다.
 - **2026-08-03** KIOM 채용게시판은 본문이 렌더되지 않는다.
 - **2026-08-03** 이 클라우드 환경은 `tcim_private_config.github_token`으로 저장소에 직접 커밋하고 푸시할 수 있다. 단 GitHub REST API는 프록시에 막혀 있고 git over HTTPS만 동작한다.
+- **2026-08-03** 지역 편차 대응. EMA HMPC(id 40)를 유럽 기관 지정 소스로 추가했다. EMRO는 TCIM 주제 페이지가 정적이고 뉴스 피드가 없어 추가할 소스가 없었다. 대신 지역 전수 확인 규칙을 넣어 `—`를 없애고 확인 여부를 구분해 기록하게 했다.
+- **2026-08-03** 이 환경의 WebSearch는 미국 로케일 결과를 반환한다. 지역 편차의 상당 부분이 검색어 설계가 아니라 이 제약에서 온다. 기관 지정 소스를 늘리는 편이 검색어를 늘리는 것보다 효과가 크다.
 - **2026-08-03** 대형 임상근거 누락을 메우려고 id 39(고근거 포착)를 신설했다. 14일 실측 A 0건, B 1건, C 1건, D 2건. 여기서 온 항목은 정책성으로 점수를 깎지 않는다.
 - **2026-08-03** 발행 주기를 매주에서 격주로 바꿨다. 크론은 매주 그대로 두고 1단계의 13일 가드로 판단한다. 쉬는 회차는 알림을 보내지 않는다.
 - **2026-08-03** Gmail 발송 파이프라인이 HTML 의 `background` 와 `background-color` 선언을 전부 제거한다. 실제 발송본에서 확인했다. `border`, `color`, `padding`, `border-radius` 는 살아남는다. 메일 디자인은 배경색 없이도 읽히게 만들어야 하고 흰 글자를 쓰면 안 된다.
