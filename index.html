@@ -304,6 +304,10 @@ function showTab(id){var tabs=['week','archive','search','sources','subscribe'];
  if(id==='sources'){renderSources();}}
 document.getElementById('q').addEventListener('keydown',function(e){if(e.key==='Enter'){dbSearch();}});
 document.getElementById('subEmail').addEventListener('keydown',function(e){if(e.key==='Enter'){subscribe();}});
+// ?tab=subscribe 로 구독 탭에 바로 들어온다. 안내 메일에서 링크 한 번으로 폼에 닿게 하려는 것이다.
+(function(){var m=/[?&]tab=([a-z]+)/.exec(location.search);if(!m){return;}
+ var t=m[1];if(['week','archive','search','sources','subscribe'].indexOf(t)<0){return;}
+ showTab(t);if(t==='subscribe'){var el=document.getElementById('subEmail');if(el){el.focus();}}})();
 boot();
 </script>
 </body>
