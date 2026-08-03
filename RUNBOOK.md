@@ -141,6 +141,9 @@
    - **각 항목 요약은 2~3문장으로 쓴다.** 한 줄로 줄이지 않는다. DB의 `summary_ko`를 메일 문장으로 다듬어 쓰되 사실을 바꾸지 않는다.
    - **링크는 절대 맨 URL로 쓰지 않는다.** 반드시 `<a href="https://zzangbo.github.io/tcim/?issue=N">제N호 전체 보기</a>` 형태의 앵커 텍스트로 넣는다. 평문에 맨 URL을 두면 메일 클라이언트가 `google.com/url?q=...` 리다이렉트로 감싸서 본문에 흉한 긴 문자열이 그대로 보인다.
    - 외부 이미지나 웹폰트를 넣지 않는다. 스타일은 전부 인라인으로 두고 표 기반 레이아웃을 유지한다. 네이버와 다음 웹메일에서 깨지지 않아야 한다.
+   - **★배경색에 의존하지 말 것.** Gmail 발송 파이프라인이 `background`와 `background-color` CSS 선언을 전부 제거한다(2026-08-03 발송본에서 확인). 살아남는 것은 `border`, `color`, `padding`, `border-radius`, `display`다. 그래서 **흰 글자를 어디에도 쓰지 않는다.** 색 배경 위 흰 글자는 배경이 사라지는 순간 흰 바탕에 흰 글자가 되어 보이지 않는다. 버튼도 채운 버튼 대신 테두리 버튼에 진한 글자로 만든다.
+   - `bgcolor` 속성은 진한 색에 쓰지 않고 옅은 톤(`#f1f7f5`, `#fafbfc` 등)에만 쓴다. 살아남든 제거되든 어두운 글자가 읽히기 때문이다.
+   - 버튼 아래에 `zzangbo.github.io/tcim/?issue=N` 을 눈에 보이는 텍스트 링크로 한 줄 더 둔다. 버튼이 깨져도 주소가 보이게 하기 위한 이중 안전장치다.
    - 맨 끝에 `수신을 중단하시려면 이 메일에 회신해 주세요.` 1줄. 시사점과 소스 현황은 넣지 않는다.
 5. 실제 발송 여부를 알 수 없으므로 `last_sent_at`은 갱신하지 않는다.
 6. `select count(*) from tcim_subscribers where status='pending'`. 1건 이상이면 최종 메시지 끝에 `구독 신청 N건 대기`를 덧붙인다.
@@ -188,4 +191,6 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 복지부 보도자료는 robots.txt로 WebFetch가 차단된다.
 - **2026-08-03** KIOM 채용게시판은 본문이 렌더되지 않는다.
 - **2026-08-03** 이 클라우드 환경은 `tcim_private_config.github_token`으로 저장소에 직접 커밋하고 푸시할 수 있다. 단 GitHub REST API는 프록시에 막혀 있고 git over HTTPS만 동작한다.
+- **2026-08-03** Gmail 발송 파이프라인이 HTML 의 `background` 와 `background-color` 선언을 전부 제거한다. 실제 발송본에서 확인했다. `border`, `color`, `padding`, `border-radius` 는 살아남는다. 메일 디자인은 배경색 없이도 읽히게 만들어야 하고 흰 글자를 쓰면 안 된다.
+- **2026-08-03** Gmail 은 본문의 링크 href 를 `google.com/url?q=...` 로 감싼다. 보내는 쪽에서 끌 수 없다. 앵커 텍스트를 쓰면 본문에 긴 주소가 보이지는 않는다.
 - **2026-08-03** 샌드박스 브라우저는 외부망이 막혀 있다. 웹앱을 브라우저로 검증하려면 Playwright 라우트 가로채기로 Supabase 응답을 대신 넣어야 한다.
