@@ -36,16 +36,38 @@
 
 ## 발송 방식
 
-**Gmail SMTP + 앱 비밀번호.** OAuth가 아니다.
+### ★측정된 제약: 클라우드 세션에서 SMTP가 나가지 않는다
 
-OAuth 동의 화면이 테스트 모드면 리프레시 토큰이 7일 만에 만료된다. 격주로 도는 파이프라인에서 이건 "첫 회차는 됐는데 그다음부터 조용히 안 나감"으로 나타난다. 프로덕션 게시로 피할 수 있지만 GCP 프로젝트와 동의 화면 설정이 붙는다. 개인 계정 하나가 자기 메일을 보내는 데 치를 값이 아니다.
+2026-08-03 실측이다. 이 컨테이너의 아웃바운드는 **HTTPS만** 열려 있다.
 
-앱 비밀번호는 2단계 인증만 켜져 있으면 16자 문자열 하나로 끝나고, 구글 계정에서 개별 폐기가 된다. 보관 위치는 `tcim_private_config`이고 이미 GitHub PAT가 같은 곳에 있으므로 위험 프로파일이 새로 생기지 않는다.
+| 대상 | 결과 |
+| --- | --- |
+| `smtp.gmail.com` 25, 465, 587 | 전부 타임아웃 |
+| `smtp-relay.brevo.com` 587 | 타임아웃 |
+| `gmail.googleapis.com` 443 | 열림 |
+| `oauth2.googleapis.com` 443 | 열림 |
+| `api.brevo.com` 443, `api.resend.com` 443 | 열림 |
+
+그래서 **앱 비밀번호 + SMTP는 이 세션 안에서 불가능하다.** 앱 비밀번호는 Gmail API로는 쓸 수 없고 SMTP 전용이기 때문에, 자격증명이 있어도 경로가 없다.
+
+Gmail MCP 커넥터에도 여전히 발송 도구가 없다(2026-08-03 확인). `create_draft`, `update_draft`, `list_drafts`, `search_threads`, `get_thread`, `get_message`, 라벨 조작이 전부다.
+
+### 남은 세 갈래
+
+| | 경로 | 비용 | 걸리는 것 |
+| --- | --- | --- | --- |
+| **A** | HTTPS 메일 API(Brevo, Resend)를 세션에서 호출 | 무료 티어 | From 이 `@gmail.com`이면 SPF·DKIM 정렬이 깨져 도달률이 나빠진다. 도메인을 사면 해결되지만 그때 비용이 0이 아니다 |
+| **B** | Gmail API + OAuth를 세션에서 호출 | 무료 | GCP 프로젝트와 동의 화면. 테스트 모드면 리프레시 토큰이 7일 만에 만료되므로 프로덕션 게시가 필수 |
+| **C** | **GitHub Actions가 SMTP 발송을 맡는다** | 무료(공개 저장소) | 런타임이 하나 늘어난다 |
+
+**C를 권한다.** 러너는 587이 열려 있어 이미 발급한 앱 비밀번호를 그대로 쓴다. GCP도 OAuth도 필요 없고, 진짜 Gmail에서 나가므로 정렬이 완벽하다. 나중에 Gmail 한도를 넘기면 같은 워크플로가 SMTP 호스트만 Brevo로 바꾸면 된다 — 러너에서는 587이 열려 있다.
+
+세션이 GitHub REST API를 못 부르므로(프록시 차단, git over HTTPS만 동작) 트리거는 크론으로 둔다. 매일 한 번 깨어나 **발행됐는데 `tcim_sends` 기록이 없는 호**를 찾아 보낸다. 세션과 조율할 필요가 없고, 하루 실패해도 다음 날이 이어받는다.
 
 | 항목 | 값 |
 | --- | --- |
-| 호스트 | `smtp.gmail.com` 포트 587 STARTTLS |
-| 비밀값 키 | `tcim_private_config.gmail_app_password` |
+| 호스트 | `smtp.gmail.com` 포트 587 STARTTLS (러너에서만 열림) |
+| 비밀값 | GitHub Actions Secrets. `tcim_private_config`가 아니다 — 세션이 쓸 수 없는 값을 DB에 둘 이유가 없다 |
 | 무료 Gmail 한도 | 하루 수신자 500명, To·CC·BCC 합산 |
 
 ## 확장을 막는 것은 할당량이 아니라 도달률

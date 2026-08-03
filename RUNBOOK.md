@@ -251,6 +251,8 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 발행 주기를 매주에서 격주로 바꿨다. 크론은 매주 그대로 두고 1단계의 13일 가드로 판단한다. 쉬는 회차는 알림을 보내지 않는다.
 - **2026-08-03** Gmail 발송 파이프라인이 HTML 의 `background` 와 `background-color` 선언을 전부 제거한다. 실제 발송본에서 확인했다. `border`, `color`, `padding`, `border-radius` 는 살아남는다. 메일 디자인은 배경색 없이도 읽히게 만들어야 하고 흰 글자를 쓰면 안 된다.
 - **2026-08-03** Gmail 은 본문의 링크 href 를 `google.com/url?q=...` 로 감싼다. 보내는 쪽에서 끌 수 없다. 앵커 텍스트를 쓰면 본문에 긴 주소가 보이지는 않는다.
+- **2026-08-03** ★이 클라우드 컨테이너는 아웃바운드가 **HTTPS만** 열려 있다. `smtp.gmail.com` 25·465·587과 `smtp-relay.brevo.com` 587이 전부 타임아웃이고, `gmail.googleapis.com`·`oauth2.googleapis.com`·`api.brevo.com`·`api.resend.com` 443은 열린다. **세션 안에서 SMTP 발송은 불가능하다.** 앱 비밀번호는 SMTP 전용이라 Gmail API로 대체할 수도 없다. 발송은 GitHub Actions로 내보낸다. 자세한 것은 `DESIGN.md`.
+- **2026-08-03** Gmail MCP 커넥터에 여전히 발송 도구가 없다. `create_draft`, `update_draft`, `list_drafts`, `search_threads`, `get_thread`, `get_message`, 라벨 조작이 전부다.
 - **2026-08-03** 결정적인 계층을 `tcim/` 패키지로 내렸다. `plan`(날짜와 격주 가드), `render`(메일 조립), `preflight`(발송 전 검사). 표준 라이브러리만 쓰므로 clone 직후 설치 없이 돈다. 판단은 그대로 이 문서가 맡는다. 무엇을 왜 내렸는지는 `DESIGN.md`.
 - **2026-08-03** 메일 템플릿 상단의 내부 주석이 발송본에 그대로 실려 나가고 있었다. 배경색 제약과 자리표시자 목록이 구독자에게 갔다. `render`가 주석을 떼고 내보낸다.
 - **2026-08-03** v2 템플릿의 가시 링크에 `?issue=2`가 하드코딩돼 있었다. 제3호부터 제2호로 연결됐을 것이다. 프리플라이트가 href와 가시 텍스트를 모두 대조한다.
