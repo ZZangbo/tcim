@@ -52,23 +52,52 @@
 
 Gmail MCP 커넥터에도 여전히 발송 도구가 없다(2026-08-03 확인). `create_draft`, `update_draft`, `list_drafts`, `search_threads`, `get_thread`, `get_message`, 라벨 조작이 전부다.
 
-### 남은 세 갈래
+### 채택: ESP HTTPS API + 본인 도메인
 
-| | 경로 | 비용 | 걸리는 것 |
-| --- | --- | --- | --- |
-| **A** | HTTPS 메일 API(Brevo, Resend)를 세션에서 호출 | 무료 티어 | From 이 `@gmail.com`이면 SPF·DKIM 정렬이 깨져 도달률이 나빠진다. 도메인을 사면 해결되지만 그때 비용이 0이 아니다 |
-| **B** | Gmail API + OAuth를 세션에서 호출 | 무료 | GCP 프로젝트와 동의 화면. 테스트 모드면 리프레시 토큰이 7일 만에 만료되므로 프로덕션 게시가 필수 |
-| **C** | **GitHub Actions가 SMTP 발송을 맡는다** | 무료(공개 저장소) | 런타임이 하나 늘어난다 |
+`jbhlab.com` 을 쓸 수 있다는 것이 나머지를 정리했다. 발신을 개인 Gmail 에서 떼어내면 GitHub Actions 도 OAuth 도 필요 없어진다.
 
-**C를 권한다.** 러너는 587이 열려 있어 이미 발급한 앱 비밀번호를 그대로 쓴다. GCP도 OAuth도 필요 없고, 진짜 Gmail에서 나가므로 정렬이 완벽하다. 나중에 Gmail 한도를 넘기면 같은 워크플로가 SMTP 호스트만 Brevo로 바꾸면 된다 — 러너에서는 587이 열려 있다.
+| 역할 | 무엇 | 비용 |
+| --- | --- | --- |
+| DNS | Cloudflare (이미 사용 중) | 0 |
+| 발신 | Resend, `news.jbhlab.com` | 0 (월 3,000통, 하루 100통) |
+| 수신과 회신 | Cloudflare Email Routing, `tcim@jbhlab.com` → Gmail | 0 |
 
-세션이 GitHub REST API를 못 부르므로(프록시 차단, git over HTTPS만 동작) 트리거는 크론으로 둔다. 매일 한 번 깨어나 **발행됐는데 `tcim_sends` 기록이 없는 호**를 찾아 보낸다. 세션과 조율할 필요가 없고, 하루 실패해도 다음 날이 이어받는다.
+탈락한 것들과 이유.
 
-| 항목 | 값 |
-| --- | --- |
-| 호스트 | `smtp.gmail.com` 포트 587 STARTTLS (러너에서만 열림) |
-| 비밀값 | GitHub Actions Secrets. `tcim_private_config`가 아니다 — 세션이 쓸 수 없는 값을 DB에 둘 이유가 없다 |
-| 무료 Gmail 한도 | 하루 수신자 500명, To·CC·BCC 합산 |
+- **Gmail API + OAuth**: 설정이 더 무거운데 도달하는 곳이 "개인 Gmail 로 다수 발송"이라 천장이 그대로다
+- **GitHub Actions + SMTP**: 도메인이 생긴 순간 존재 이유가 사라졌다. 러너에서 보내도 발신은 여전히 `@gmail.com` 이라 천장은 같은데 런타임과 비밀값 저장소만 하나씩 는다
+- **Cloudflare Email Service(발신)**: 되기는 한다. 그런데 Workers Paid 월 $5 가 필요하고 포함량이 3,000통/월로 Resend 무료와 같다. 즉 $5 는 통합만 사는 값이다. 게다가 공개 베타다. 2주에 한 번 무인으로 도는 파이프라인에 맞지 않는다
+
+### 발신과 수신을 다른 이름에 두는 이유
+
+`news.jbhlab.com` 에 발신용 SPF·DKIM 이 들어가고, 아펙스 `jbhlab.com` 에 Email Routing 의 MX 와 SPF 가 들어간다. **이름이 다르므로 SPF 레코드가 겹칠 일이 없다.** 한 도메인에 SPF TXT 를 두 개 두면 안 되는데, 이 구조에서는 그 문제가 아예 생기지 않는다.
+
+### 회신 주소가 왜 따로 필요한가
+
+발신 도메인 `news.jbhlab.com` 에는 MX 가 없다. 그래서 그 주소로는 **회신을 받을 수 없다.** 푸터의 "이 메일에 회신해 주세요", `List-Unsubscribe` 헤더, `SUBSCRIBERS.md` 4번의 일일 회신 스캔이 전부 회신을 전제로 돌아가므로, 이걸 놓치면 수신 중단 경로가 통째로 끊긴다.
+
+Cloudflare Email Routing 이 `tcim@jbhlab.com` 을 `jbh8284@gmail.com` 으로 포워딩한다. 회신이 지금처럼 Gmail 받은편지함에 들어오므로 **기존 스캔 절차를 한 줄도 고치지 않아도 된다.** `render.py` 의 `UNSUBSCRIBE_MAILTO` 와 `send.py` 의 `reply_to` 가 같은 주소를 가리켜야 하고, 테스트가 그걸 지킨다.
+
+### 이미 걸려 있는 DMARC
+
+`_dmarc.jbhlab.com` 에 `v=DMARC1; p=reject; adkim=r; aspf=r` 이 있다. 등록업체 기본값으로 보인다.
+
+- **검증 전에 보내면 100% 거부된다.** 스팸함이 아니라 거부다. 순서를 지켜야 한다
+- 대신 인증이 붙고 나면 `p=reject` 도메인은 Gmail 과 네이버에서 **아무 정책도 없는 도메인보다 유리한** 출발선이 된다
+- `adkim=r`, `aspf=r` 은 완화 정렬이라 서브도메인 발신이 조직 도메인 정책과 정렬된다. `sp=` 가 없으므로 `p=reject` 는 서브도메인에도 적용된다
+
+### 수신자 한 명당 한 통
+
+BCC 로 묶지 않는다. BCC 묶음은 개인 Gmail 시절의 우회책이었다.
+
+- 수신자별 성공과 실패를 정확히 안다. `tcim_sends` 가 추측이 아니라 사실이 된다
+- 받는 사람 To 에 자기 주소가 보여 단체 발송 티가 덜 난다
+- 한 명이 실패해도 나머지가 나간다
+- 하루 100통 한도는 **구독자 100명까지 하루에 다 나간다**는 뜻이다. 넘어서면 Brevo 무료(하루 300통)로 `mail_provider` 만 바꾼다
+
+재시도가 중복 발송이 되지 않도록 `Idempotency-Key` 를 `tcim-{호}-{주소해시}` 로 보낸다. DB 의 `(issue_no, lower(email))` 유니크 인덱스와 이중 방어다.
+
+설정 절차는 [`SETUP-mail.md`](SETUP-mail.md).
 
 ## 확장을 막는 것은 할당량이 아니라 도달률
 
@@ -113,10 +142,11 @@ Gmail과 네이버가 네이티브 구독취소 버튼을 띄운다. 도달률�
 ## 단계
 
 1. ~~설계 메모~~ 이 문서
-2. `plan`, `render`, `preflight` + 테스트 — 자격증명이 없어 어디서나 돈다
-3. **앱 비밀번호 발급 — 사람이 할 일.** 값을 `tcim_private_config`에 넣는다
-4. `send.py` + `tcim_sends` 테이블. 첫 회차는 `auto_send=false`로 렌더 결과만 확인
-5. 8/17 제3호를 첫 자동 발송으로
+2. ~~`plan`, `render`, `preflight` + 테스트~~ 완료
+3. ~~`send.py` + `tcim_sends` 테이블 + `auto_send` 플래그~~ 완료
+4. **Cloudflare Email Routing 과 Resend 도메인 설정 — 사람이 할 일.** [`SETUP-mail.md`](SETUP-mail.md)
+5. 테스트 발송으로 SPF·DKIM·DMARC PASS 와 세 곳 도달 확인, 브랜딩 푸터 유무 판단
+6. 통과하면 `auto_send=true`. 8/17 제3호가 첫 자동 발송
 
 ## 실행 위치는 옮기지 않는다
 

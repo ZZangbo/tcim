@@ -26,7 +26,12 @@ ISSUE_URL = "https://zzangbo.github.io/tcim/?issue={issue_no}"
 
 # 네이티브 구독취소 버튼을 띄운다. subject 를 TCIM 으로 지정한 이유는
 # SUBSCRIBERS.md 4번의 회신 스캔 쿼리(subject:TCIM)에 그대로 걸리게 하기 위해서다.
-UNSUBSCRIBE_MAILTO = "jbh8284@gmail.com"
+#
+# 이 주소는 Cloudflare Email Routing 이 jbh8284@gmail.com 으로 포워딩한다.
+# 발신 도메인(news.jbhlab.com)에는 MX 가 없어서 거기로는 회신을 받을 수 없다.
+# 푸터의 "이 메일에 회신해 주세요" 와 send.py 의 reply_to 가 모두 이 주소를 가리켜야
+# 회신 기반 수신 중단 흐름이 성립한다.
+UNSUBSCRIBE_MAILTO = "tcim@jbhlab.com"
 
 CARD_START = "<!-- CARD:START -->"
 CARD_END = "<!-- CARD:END -->"
@@ -159,7 +164,7 @@ def render(data: dict, template: str) -> dict:
         ),
         "headers": {
             "List-Unsubscribe": f"<mailto:{UNSUBSCRIBE_MAILTO}?subject=TCIM unsubscribe>",
-            "List-Id": "TCIM Global Watch <tcim.zzangbo.github.io>",
+            "List-Id": "TCIM Global Watch <tcim.jbhlab.com>",
         },
     }
 

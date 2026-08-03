@@ -10,7 +10,8 @@
 | `RUNBOOK.md` | **격주 발행 파이프라인의 원본.** 스케줄 작업이 실행 시점에 이 저장소를 clone해서 이 파일을 읽고 그대로 수행한다. |
 | `SUBSCRIBERS.md` | **구독자 운영 절차의 원본.** 매일 08:00 KST 일일 점검 작업이 읽는다. 신청 확인, 승인, 환영 메일, 수신 중단. |
 | `email-template.html` | 구독 메일 뼈대. 배경색에 의존하지 않는 구조다. **손으로 채우지 말 것** — `tcim/render.py`가 읽어서 치환한다. |
-| `tcim/` | 파이프라인의 결정적인 부분. `plan`(날짜와 격주 가드), `render`(메일 조립), `preflight`(발송 전 검사). 표준 라이브러리만 쓴다. |
+| `tcim/` | 파이프라인의 결정적인 부분. `plan`(날짜와 격주 가드), `render`(메일 조립), `preflight`(발송 전 검사), `send`(Resend 발송). 표준 라이브러리만 쓴다. |
+| `SETUP-mail.md` | 메일 발송 최초 설정. 사람이 대시보드에서 한 번만 하는 일. |
 | `tests/` | `PYTHONPATH=.:tests python3 -m unittest discover -s tests` |
 | `DESIGN.md` | 어디까지 코드로 내렸고 왜 거기서 멈췄는지. 발송 방식과 확장 계획도 여기. |
 | `schema.sql` | Supabase 스키마와 RLS 정책의 참조본. 실제 DB와 어긋나면 DB가 정답이고 이 파일을 맞춘다. |

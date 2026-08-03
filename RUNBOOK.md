@@ -168,11 +168,11 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
 
 ## 5단계 — 구독자 발송 준비
 
-**Gmail 커넥터에는 발송 도구가 없다.** `create_draft`로 초안까지만 만들고 실제 발송은 사용자가 Gmail에서 직접 누른다. 이 사실을 최종 메시지에 반드시 알린다.
+발송은 Resend HTTPS API로 나간다. 설정 배경은 `DESIGN.md`, 최초 설정 절차는 `SETUP-mail.md`.
 
-1. `select email from tcim_subscribers where status='approved' order by id` → 승인된 수신자. **0명이면 초안을 만들지 말고 이 단계를 건너뛴다.**
-2. `to`에는 사용자 본인(`jbh8284@gmail.com`)만 넣고, 승인된 수신자는 **전원 `bcc`**에 넣는다. 수신자끼리 주소가 보이면 안 되므로 `to`나 `cc`에 넣지 않는다. 단 **본인 주소가 승인 목록에 있으면 `bcc`에서는 뺀다.** 같은 사람에게 두 번 가지 않게 한다.
-3. `subject`: `TCIM 브리핑 제N호 — (헤드라인1 축약), (헤드라인2 축약) (M/D~M/D)`
+1. `select email from tcim_subscribers where status='approved' order by id` → 승인된 수신자. **0명이면 이 단계를 통째로 건너뛴다.**
+2. **수신자 한 명당 한 통씩 보낸다. BCC로 묶지 않는다.** 각자 To에 자기 주소만 들어가므로 서로의 주소가 보일 일이 없고, 수신자별 성공과 실패를 정확히 알 수 있다. 본인 주소가 승인 목록에 있으면 그냥 한 명으로 친다 — 중복 계산할 자리가 없다.
+3. `select key, value from tcim_private_config where key in ('resend_api_key','mail_from','mail_reply_to','auto_send','mail_provider')`로 설정을 읽는다. `resend_api_key`가 없으면 **아직 설정 전이다.** 발송하지 말고 최종 메시지에 `메일 설정 미완료 — SETUP-mail.md 참고`를 남긴다.
 4. **HTML을 손으로 조립하지 않는다.** 호 데이터를 JSON으로 쓴 뒤 아래를 실행한다.
 
    ```bash
@@ -181,12 +181,9 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
 
    `issue.json`에 넣을 것: `issue_no`, `period_start`, `period_end`, `intro`, `counts`, `subject_headlines`(제목줄용 20자 안팎 축약 2개), `recipients`(승인 수신자 주소 배열), `headlines`(각 항목에 `title_ko`, `summary_ko`, `section`, `region`). 축약과 요약은 판단이라 여기서 만들어 넣는다.
 
-   나오는 것: `out/mail.html`, `out/mail.txt`, 그리고 stdout에 제목과 프리플라이트 결과. **`preflight.ok`가 false면 초안을 만들지 말고 실패 사유를 알림에 적는다.** 종료 코드도 1이다.
-
-   `create_draft`의 `htmlBody`에 `mail.html`을, `body`에 `mail.txt`를 그대로 넣는다. `subject`도 stdout의 값을 쓴다.
+   나오는 것: `out/mail.html`, `out/mail.txt`, 그리고 stdout에 제목과 프리플라이트 결과. **`preflight.ok`가 false면 한 통도 보내지 말고 실패 사유를 알림에 적는다.** 종료 코드도 1이다.
 
    - 프리플라이트가 보는 것과 그 이유는 `DESIGN.md`에 있다. 배경색 선언, 흰 글자, 어두운 `bgcolor`, 맨 URL 앵커, 어긋난 `?issue=N`, 미치환 자리표시자, 수신 중단 문구 누락, 수신자 수 불일치를 잡는다.
-   - `List-Unsubscribe` 헤더는 `build`가 계산해 주지만 `create_draft`로는 넣을 수 없다. 4단계(`send.py`)가 붙은 뒤부터 실제로 실린다.
    - 카드 좌측 색띠와 라벨 색은 `render.py`가 섹션에 맞춰 넣는다. policy `#0f6b5c`, evidence `#3554a5`, jobs `#a05a1f`.
    - **각 항목 요약은 2~3문장으로 쓴다.** 한 줄로 줄이지 않는다. DB의 `summary_ko`를 메일 문장으로 다듬어 쓰되 사실을 바꾸지 않는다.
    - **링크는 절대 맨 URL로 쓰지 않는다.** 반드시 `<a href="https://zzangbo.github.io/tcim/?issue=N">제N호 전체 보기</a>` 형태의 앵커 텍스트로 넣는다. 평문에 맨 URL을 두면 메일 클라이언트가 `google.com/url?q=...` 리다이렉트로 감싸서 본문에 흉한 긴 문자열이 그대로 보인다.
@@ -195,8 +192,30 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
    - `bgcolor` 속성은 진한 색에 쓰지 않고 옅은 톤(`#f1f7f5`, `#fafbfc` 등)에만 쓴다. 살아남든 제거되든 어두운 글자가 읽히기 때문이다.
    - 버튼 아래에 `zzangbo.github.io/tcim/?issue=N` 을 눈에 보이는 텍스트 링크로 한 줄 더 둔다. 버튼이 깨져도 주소가 보이게 하기 위한 이중 안전장치다.
    - 맨 끝에 `수신을 중단하시려면 이 메일에 회신해 주세요.` 1줄. 시사점과 소스 현황은 넣지 않는다.
-5. 실제 발송 여부를 알 수 없으므로 `last_sent_at`은 갱신하지 않는다.
-6. `select count(*) from tcim_subscribers where status='pending'`. 1건 이상이면 최종 메시지 끝에 `구독 신청 N건 대기`를 덧붙인다.
+5. **발송.** `auto_send`가 `true`가 아니면 `dry_run`으로 대상만 확인하고 실제로 보내지 않는다.
+
+   ```python
+   from tcim.send import send_issue
+   out = send_issue(rendered, recipients, api_key=..., from_address=..., reply_to=...,
+                    issue_no=N, already_sent=이미_보낸_주소_집합, dry_run=(auto_send != 'true'))
+   ```
+
+   `already_sent`는 `select email from tcim_sends where issue_no=N and status='sent'`로 채운다. 재시도할 때 성공분을 두 번 보내지 않기 위해서다.
+
+6. **결과 기록.** `send_issue`가 돌려준 `results`를 그대로 `tcim_sends`에 넣는다. `(issue_no, lower(email))`에 유니크 인덱스가 있으므로 `on conflict do update`를 쓴다.
+
+   ```sql
+   insert into tcim_sends (issue_no, email, status, provider, provider_id, error)
+   values (...)
+   on conflict (issue_no, lower(email)) do update
+     set status=excluded.status, provider_id=excluded.provider_id,
+         error=excluded.error, attempted_at=now();
+   ```
+
+   실패가 하나라도 있으면 최종 메시지에 `발송 실패 N건: (주소)`를 덧붙인다. 다음 회차나 재실행이 실패분만 다시 보낸다.
+
+7. `last_sent_at`은 `tcim_sends`가 대신하므로 갱신하지 않는다. 수신자별 사실이 그쪽에 남는다.
+8. `select count(*) from tcim_subscribers where status='pending'`. 1건 이상이면 최종 메시지 끝에 `구독 신청 N건 대기`를 덧붙인다.
 
 **승인은 사용자가 별도로 지시할 때만 한다. 루틴이 스스로 `status`를 `approved`로 바꾸는 일은 절대 없다.**
 
@@ -251,6 +270,9 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 발행 주기를 매주에서 격주로 바꿨다. 크론은 매주 그대로 두고 1단계의 13일 가드로 판단한다. 쉬는 회차는 알림을 보내지 않는다.
 - **2026-08-03** Gmail 발송 파이프라인이 HTML 의 `background` 와 `background-color` 선언을 전부 제거한다. 실제 발송본에서 확인했다. `border`, `color`, `padding`, `border-radius` 는 살아남는다. 메일 디자인은 배경색 없이도 읽히게 만들어야 하고 흰 글자를 쓰면 안 된다.
 - **2026-08-03** Gmail 은 본문의 링크 href 를 `google.com/url?q=...` 로 감싼다. 보내는 쪽에서 끌 수 없다. 앵커 텍스트를 쓰면 본문에 긴 주소가 보이지는 않는다.
+- **2026-08-03** 발송 경로를 확정했다. Resend HTTPS API(`news.jbhlab.com` 발신) + Cloudflare Email Routing(`tcim@jbhlab.com` 수신 포워딩). 둘 다 무료다. **발신과 수신을 다른 이름에 둔 이유는 SPF 레코드가 겹치지 않게 하려는 것**이고, 회신 주소가 따로 필요한 이유는 발신 도메인에 MX가 없어 거기로는 회신을 못 받기 때문이다. Cloudflare Email Service(발신)는 Workers Paid 월 $5에 포함량이 Resend 무료와 같아 탈락했다.
+- **2026-08-03** `_dmarc.jbhlab.com`에 `p=reject`가 이미 걸려 있다(등록업체 기본값). **인증을 붙이기 전에 그 도메인 이름으로 보내면 스팸함이 아니라 거부된다.** 반대로 인증이 붙으면 유리한 출발선이 된다.
+- **2026-08-03** BCC 묶음을 버리고 수신자당 한 통씩 보낸다. ESP를 쓰면 그쪽이 낫다 — 수신자별 성공과 실패를 정확히 알 수 있고, 한 명이 실패해도 나머지가 나간다.
 - **2026-08-03** ★이 클라우드 컨테이너는 아웃바운드가 **HTTPS만** 열려 있다. `smtp.gmail.com` 25·465·587과 `smtp-relay.brevo.com` 587이 전부 타임아웃이고, `gmail.googleapis.com`·`oauth2.googleapis.com`·`api.brevo.com`·`api.resend.com` 443은 열린다. **세션 안에서 SMTP 발송은 불가능하다.** 앱 비밀번호는 SMTP 전용이라 Gmail API로 대체할 수도 없다. 발송은 GitHub Actions로 내보낸다. 자세한 것은 `DESIGN.md`.
 - **2026-08-03** Gmail MCP 커넥터에 여전히 발송 도구가 없다. `create_draft`, `update_draft`, `list_drafts`, `search_threads`, `get_thread`, `get_message`, 라벨 조작이 전부다.
 - **2026-08-03** 결정적인 계층을 `tcim/` 패키지로 내렸다. `plan`(날짜와 격주 가드), `render`(메일 조립), `preflight`(발송 전 검사). 표준 라이브러리만 쓰므로 clone 직후 설치 없이 돈다. 판단은 그대로 이 문서가 맡는다. 무엇을 왜 내렸는지는 `DESIGN.md`.
