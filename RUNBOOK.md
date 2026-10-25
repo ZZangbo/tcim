@@ -284,3 +284,12 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-08-03** 절차 문서와 스케줄 작업 프롬프트를 따로 고치면 어긋난다. SUBSCRIBERS.md 에 수신 중단 회신 확인을 넣었는데 8분 먼저 만들어진 일일 점검 작업 프롬프트에는 그 단계가 없었고, 양쪽의 '조용한 날엔 알리지 않는다' 규칙이 '중단은 반드시 알린다'와 충돌해 중단이 조용히 처리될 뻔했다. **절차를 바꾸면 그것을 실행하는 작업 프롬프트의 단계 열거와 알림 규칙도 같이 본다.**
 - **2026-08-03** 수신 중단 회신 검색(`subject:TCIM`)에 브리핑 사본이 걸린다. 사용자가 다른 주소에서 자기에게 보낸 것이라 보낸 사람 대조로도 안 걸러진다. 본문에 사람이 쓴 문장이 있는지로 판별한다. SUBSCRIBERS.md 4번 참고.
 - **2026-08-03** 샌드박스 브라우저는 외부망이 막혀 있다. 웹앱을 브라우저로 검증하려면 Playwright 라우트 가로채기로 Supabase 응답을 대신 넣어야 한다.
+- **2026-09-28** ★`tcim_sends` 의 유니크 인덱스는 `(issue_no, revision, lower(email))` 이다. 이 문서에 적혀 있던 `on conflict (issue_no, lower(email))` 은 `42P10: there is no unique or exclusion constraint matching the ON CONFLICT specification` 으로 실패한다. 본문 5단계 6번을 함께 고쳤다.
+- **2026-09-28** ★**푸시가 막힌다. 토큰 문제가 아니다.** egress 프록시가 git-over-HTTPS 쓰기를 세션별 허용 저장소 목록으로 제한하고, `ZZangbo/tcim` 이 그 목록에 없다. 실측: 익명 `git ls-remote` 성공, 토큰 붙인 `git ls-remote` 성공, `git push` 만 403. 에러는 GitHub 가 아니라 프록시가 보낸다. URL 에 PAT 를 직접 박아도 소용없다. **조직 정책 거부이므로 api.github.com 이나 다른 경로로 우회하지 않는다.**
+- **2026-09-28** USAJOBS 프록시(id 20) 응답에 공고 URL(`usajobs.gov/job/ID`)이 포함되기 시작해 항목 insert 가 가능해졌다. 다만 `q=traditional medicine` 과 `integrative medicine` 모두 VHA 일반 공고뿐이고 TCIM 직접 관련 신규 게시는 0건이었다.
+- **2026-09-28** KIOM 채용게시판(id 14)이 이번에는 본문 미렌더가 아니라 `robots.txt fetch ConnectTimeout` 으로 WebFetch 자체가 거부됐다. 실패 양상이 회차마다 달라 5회 누적. 국내 채용은 NIKOM 과 뉴스 검색으로만 커버된다고 보는 편이 정확하다.
+- **2026-09-28** WHO EMRO 뉴스 페이지(id 7)가 3회 연속 2025-10-06 에 멈춰 있다. 접속은 되지만 소스로서의 가치가 없다. EMR 은 문헌으로만 잡히므로 기관 지정 소스를 새로 찾거나 EMR 을 '문헌 전용 지역'으로 명시하는 편이 낫다.
+- **2026-09-28** 지역 전수 확인에서 AFR 이 기간 직전(8/31 아프리카 전통의학의 날, 후속 보도 9/2~9/4)에 몰려 격주 경계 밖으로 빠졌다. 연례 기념일이 기간 경계에 걸리는 회차에서는 직전 며칠을 함께 훑을 것.
+- **2026-10-12** `tcim_sends` 유니크 인덱스가 `(issue_no, revision, lower(email))`로 바뀌어 5단계 6번의 `on conflict (issue_no, lower(email))`는 42P10 오류로 실패한다. `revision`(기존 호는 1)을 함께 넣고 `on conflict (issue_no, revision, lower(email))`로 써야 한다.
+- **2026-10-12** PubMed MCP가 붙지 않은 회차에는 eutils WebFetch가 ROBOTS_DISALLOWED, api.crossref.org WebFetch가 CLIENT_ERROR로 막혀 문헌 폴백이 없다. id 23, 24, 39는 실패로 기록하고 문헌 공백을 브리핑에 명시한다.
+- **2026-10-26** ★스케줄 세션에서 clone한 저장소 코드 실행(`python3 -m tcim plan`)이 자동 권한 분류기에 '외부 코드'로 거부됐다. 그래서 plan은 `tcim/plan.py`를 읽고 같은 규칙으로 판정했고(15일 경과, 정상 주기), build·프리플라이트·`send_issue`를 돌릴 수 없어 **구독 메일을 보내지 않았다.** 발행(DB)은 정상. 실행이 막히면 우회하지 말고 발송을 보류한 뒤 알림에 적는다. 이 호는 사용자가 실행을 허용한 세션에서 `already_sent` 기준으로 재발송하면 된다.
