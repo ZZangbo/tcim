@@ -95,7 +95,7 @@ BCC 로 묶지 않는다. BCC 묶음은 개인 Gmail 시절의 우회책이었�
 - 한 명이 실패해도 나머지가 나간다
 - 하루 100통 한도는 **구독자 100명까지 하루에 다 나간다**는 뜻이다. 넘어서면 Brevo 무료(하루 300통)로 `mail_provider` 만 바꾼다
 
-재시도가 중복 발송이 되지 않도록 `Idempotency-Key` 를 `tcim-{호}-{주소해시}` 로 보낸다. DB 의 `(issue_no, lower(email))` 유니크 인덱스와 이중 방어다.
+재시도가 중복 발송이 되지 않도록 `Idempotency-Key` 를 `tcim-{호}-{주소해시}`(정정판은 `tcim-{호}-r{판}-{주소해시}`)로 보낸다. DB 의 `(issue_no, revision, lower(email))` 유니크 인덱스와 이중 방어다.
 
 설정 절차는 [`SETUP-mail.md`](SETUP-mail.md).
 

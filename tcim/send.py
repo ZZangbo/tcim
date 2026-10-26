@@ -58,14 +58,19 @@ def _http_post(url: str, payload: dict, headers: dict) -> tuple[int, dict]:
         raise SendError(f"{type(exc).__name__}: {exc}") from exc
 
 
-def _idempotency_key(issue_no: int, email: str) -> str:
-    """같은 호를 같은 사람에게 두 번 보내지 않게 한다.
+def _idempotency_key(issue_no: int, email: str, revision: int = 1) -> str:
+    """같은 호의 같은 판(revision)을 같은 사람에게 두 번 보내지 않게 한다.
 
     재시도가 중복 발송이 되는 것을 provider 쪽에서도 막는다.
-    DB 의 (issue_no, lower(email)) 유니크 인덱스와 이중 방어다.
+    DB 의 (issue_no, revision, lower(email)) 유니크 인덱스와 이중 방어다.
+
+    revision 이 키에 없으면 정정판(revision 2)을 보낼 때 Resend 가 1판과 같은 요청으로 보고
+    조용히 걸러 낸다. 1판은 기존 키 형식을 그대로 쓴다 — 이미 나간 호와의 중복 방어를 유지하기 위해서다.
     """
     digest = hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()[:16]
-    return f"tcim-{issue_no}-{digest}"
+    if int(revision) == 1:
+        return f"tcim-{issue_no}-{digest}"
+    return f"tcim-{issue_no}-r{int(revision)}-{digest}"
 
 
 def _resend_payload(rendered: dict, recipient: str, from_address: str, reply_to: str) -> dict:
@@ -90,6 +95,7 @@ def send_one(
     from_address: str,
     reply_to: str,
     issue_no: int,
+    revision: int = 1,
     transport=None,
     sleep_seconds: float = DEFAULT_SLEEP,
 ) -> dict:
@@ -99,7 +105,7 @@ def send_one(
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "Idempotency-Key": _idempotency_key(issue_no, recipient),
+        "Idempotency-Key": _idempotency_key(issue_no, recipient, revision),
     }
 
     last_error = ""
@@ -153,6 +159,7 @@ def send_issue(
     from_address: str,
     reply_to: str,
     issue_no: int,
+    revision: int = 1,
     already_sent: set[str] | None = None,
     dry_run: bool = False,
     transport=None,
@@ -161,6 +168,7 @@ def send_issue(
     """수신자 전원에게 한 통씩.
 
     Args:
+        revision: 같은 호의 정정판 번호. `tcim_sends.revision` 과 같은 값을 넘긴다.
         already_sent: 이미 보낸 주소. `tcim_sends` 에서 읽어 넘기면 재시도 때
             성공분을 건너뛴다. 소문자로 비교한다.
         dry_run: 실제로 보내지 않고 대상만 확인한다. `auto_send=false` 인 회차용.
@@ -210,6 +218,7 @@ def send_issue(
                 from_address=from_address,
                 reply_to=reply_to,
                 issue_no=issue_no,
+                revision=revision,
                 transport=transport,
                 sleep_seconds=sleep_seconds,
             )

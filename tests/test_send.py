@@ -112,6 +112,23 @@ class TestIdempotency(unittest.TestCase):
         )
 
 
+    def test_정정판은_키가_다르다(self):
+        """revision 이 키에 없으면 정정판이 Resend 에서 조용히 걸러진다."""
+        t1, t2 = FakeTransport(), FakeTransport()
+        send_issue(rendered(), ["a@x.com"], transport=t1, **ARGS)
+        send_issue(rendered(), ["a@x.com"], transport=t2, revision=2, **ARGS)
+        self.assertNotEqual(
+            t1.calls[0]["headers"]["Idempotency-Key"],
+            t2.calls[0]["headers"]["Idempotency-Key"],
+        )
+
+    def test_1판은_기존_키_형식을_유지한다(self):
+        """이미 나간 호와의 중복 방어가 끊기지 않아야 한다."""
+        from tcim.send import _idempotency_key
+        self.assertRegex(_idempotency_key(3, "a@x.com"), r"^tcim-3-[0-9a-f]{16}$")
+        self.assertEqual(_idempotency_key(3, "a@x.com"), _idempotency_key(3, "a@x.com", 1))
+
+
 class TestFailure(unittest.TestCase):
     def test_한_명이_실패해도_나머지는_나간다(self):
         t = FakeTransport([(422, {"message": "잘못된 주소"}), (200, {"id": "ok"})])
