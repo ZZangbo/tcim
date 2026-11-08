@@ -168,56 +168,27 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
 
 ---
 
-## 5단계 — 구독자 발송 준비
+## 5단계 — 구독 메일 원고 등록 (발송은 GitHub Actions)
 
-발송은 Resend HTTPS API로 나간다. 설정 배경은 `DESIGN.md`, 최초 설정 절차는 `SETUP-mail.md`.
+**세션은 메일을 직접 보내지 않는다.** 스케줄 세션이 clone 한 저장소 코드(`python3 -m tcim ...`)를 실행하면 자동 권한 분류기가 '외부 코드'로 거부한다(10/26, 11/9 연속). 그래서 판단이 들어가는 원고만 세션이 DB 에 넣고, 렌더, 프리플라이트 13종, 발송, `tcim_sends` 기록은 `.github/workflows/send-mail.yml` 이 `python3 -m tcim dispatch` 로 한다. 월 08:17 KST 1차, 11:17 KST 재시도. 이미 보낸 주소는 건너뛰므로 몇 번 돌아도 중복 발송이 없다.
 
-1. `select email from tcim_subscribers where status='approved' order by id` → 승인된 수신자. **0명이면 이 단계를 통째로 건너뛴다.**
-2. **수신자 한 명당 한 통씩 보낸다. BCC로 묶지 않는다.** 각자 To에 자기 주소만 들어가므로 서로의 주소가 보일 일이 없고, 수신자별 성공과 실패를 정확히 알 수 있다. 본인 주소가 승인 목록에 있으면 그냥 한 명으로 친다 — 중복 계산할 자리가 없다.
-3. `select key, value from tcim_private_config where key in ('resend_api_key','mail_from','mail_reply_to','auto_send','mail_provider')`로 설정을 읽는다. `resend_api_key`가 없으면 **아직 설정 전이다.** 발송하지 말고 최종 메시지에 `메일 설정 미완료 — SETUP-mail.md 참고`를 남긴다.
-4. **HTML을 손으로 조립하지 않는다.** 호 데이터를 JSON으로 쓴 뒤 아래를 실행한다.
-
-   ```bash
-   cd /tmp/tcim && python3 -m tcim build --data issue.json --template email-template.html --approved N --out ./out
-   ```
-
-   `issue.json`에 넣을 것: `issue_no`, `period_start`, `period_end`, `intro`, `counts`, `subject_headlines`(제목줄용 20자 안팎 축약 2개), `recipients`(승인 수신자 주소 배열), `headlines`(각 항목에 `title_ko`, `summary_ko`, `section`, `region`). 축약과 요약은 판단이라 여기서 만들어 넣는다.
-
-   나오는 것: `out/mail.html`, `out/mail.txt`, 그리고 stdout에 제목과 프리플라이트 결과. **`preflight.ok`가 false면 한 통도 보내지 말고 실패 사유를 알림에 적는다.** 종료 코드도 1이다.
-
-   - 프리플라이트가 보는 것과 그 이유는 `DESIGN.md`에 있다. 배경색 선언, 흰 글자, 어두운 `bgcolor`, 맨 URL 앵커, 어긋난 `?issue=N`, 미치환 자리표시자, 수신 중단 문구 누락, 수신자 수 불일치를 잡는다.
-   - 카드 좌측 색띠와 라벨 색은 `render.py`가 섹션에 맞춰 넣는다. policy `#0f6b5c`, evidence `#3554a5`, jobs `#a05a1f`.
-   - **각 항목 요약은 2~3문장으로 쓴다.** 한 줄로 줄이지 않는다. DB의 `summary_ko`를 메일 문장으로 다듬어 쓰되 사실을 바꾸지 않는다.
-   - **링크는 절대 맨 URL로 쓰지 않는다.** 반드시 `<a href="https://zzangbo.github.io/tcim/?issue=N">제N호 전체 보기</a>` 형태의 앵커 텍스트로 넣는다. 평문에 맨 URL을 두면 메일 클라이언트가 `google.com/url?q=...` 리다이렉트로 감싸서 본문에 흉한 긴 문자열이 그대로 보인다.
-   - 외부 이미지나 웹폰트를 넣지 않는다. 스타일은 전부 인라인으로 두고 표 기반 레이아웃을 유지한다. 네이버와 다음 웹메일에서 깨지지 않아야 한다.
-   - **★배경색에 의존하지 말 것.** Gmail 발송 파이프라인이 `background`와 `background-color` CSS 선언을 전부 제거한다(2026-08-03 발송본에서 확인). 살아남는 것은 `border`, `color`, `padding`, `border-radius`, `display`다. 그래서 **흰 글자를 어디에도 쓰지 않는다.** 색 배경 위 흰 글자는 배경이 사라지는 순간 흰 바탕에 흰 글자가 되어 보이지 않는다. 버튼도 채운 버튼 대신 테두리 버튼에 진한 글자로 만든다.
-   - `bgcolor` 속성은 진한 색에 쓰지 않고 옅은 톤(`#f1f7f5`, `#fafbfc` 등)에만 쓴다. 살아남든 제거되든 어두운 글자가 읽히기 때문이다.
-   - 버튼 아래에 `zzangbo.github.io/tcim/?issue=N` 을 눈에 보이는 텍스트 링크로 한 줄 더 둔다. 버튼이 깨져도 주소가 보이게 하기 위한 이중 안전장치다.
-   - 맨 끝에 `수신을 중단하시려면 이 메일에 회신해 주세요.` 1줄. 시사점과 소스 현황은 넣지 않는다.
-5. **발송.** `auto_send`가 `true`가 아니면 `dry_run`으로 대상만 확인하고 실제로 보내지 않는다.
-
-   ```python
-   from tcim.send import send_issue
-   out = send_issue(rendered, recipients, api_key=..., from_address=..., reply_to=...,
-                    issue_no=N, revision=1, already_sent=이미_보낸_주소_집합, dry_run=(auto_send != 'true'))
-   ```
-
-   `already_sent`는 `select email from tcim_sends where issue_no=N and revision=1 and status='sent'`로 채운다. 재시도할 때 성공분을 두 번 보내지 않기 위해서다.
-
-6. **결과 기록.** `send_issue`가 돌려준 `results`를 그대로 `tcim_sends`에 넣는다. `(issue_no, revision, lower(email))`에 유니크 인덱스가 있으므로 `on conflict do update`를 쓴다. 정정판은 `revision=2`로 보내고 기록한다.
+1. `select count(*) from tcim_subscribers where status='approved'` → **0명이면 원고를 넣지 않고 이 단계를 건너뛴다.**
+2. 원고를 `tcim_mail_jobs` 에 넣는다. **수신자는 넣지 않는다**(Actions 가 `tcim_subscribers` 를 직접 읽는다).
 
    ```sql
-   insert into tcim_sends (issue_no, revision, email, status, provider, provider_id, error)
-   values (...)
-   on conflict (issue_no, revision, lower(email)) do update
-     set status=excluded.status, provider_id=excluded.provider_id,
-         error=excluded.error, attempted_at=now();
+   insert into tcim_mail_jobs (issue_no, revision, payload) values (N, 1, $j${...}$j$::jsonb)
+   on conflict (issue_no, revision) do update set payload = excluded.payload, created_at = now();
    ```
 
-   실패가 하나라도 있으면 최종 메시지에 `발송 실패 N건: (주소)`를 덧붙인다. 다음 회차나 재실행이 실패분만 다시 보낸다.
+   `payload` 에 넣을 것: `period_start`, `period_end`, `intro`, `counts`, `subject_headlines`(제목줄용 20자 안팎 축약 2개), `headlines`(3~5건, 각 항목에 `title_ko`, `summary_ko`, `section`, `region`). `issue_no` 는 열에 있으므로 payload 에 넣지 않아도 된다.
+   - **각 항목 요약은 2~3문장, 60자 이상.** 한 줄로 줄이지 않는다. DB 의 `summary_ko`를 메일 문장(합니다체)으로 다듬되 사실을 바꾸지 않는다.
+   - 링크, 색, 수신 중단 문구, 배경색 제약은 `render.py` 와 프리플라이트가 맡는다. 원고에 HTML 을 넣지 않는다.
+   - 프리플라이트가 실패하면 Actions 가 한 통도 보내지 않고 실패로 끝난다. GitHub 가 저장소 주인에게 실패 메일을 보낸다.
+3. **직전 호 발송 확인.** `select count(*) from tcim_sends where issue_no=(직전 호) and status='sent'` 가 승인 구독자 수보다 적으면 알림에 `점검: 제N호 메일 미발송 M명 — Actions 실행 기록 확인` 1줄을 넣는다. Actions 가 멈춰도 다음 회차에 드러나게 하기 위해서다.
+4. `select count(*) from tcim_subscribers where status='pending'`. 1건 이상이면 최종 메시지 끝에 `구독 신청 N건 대기`를 덧붙인다.
+5. 정정판은 `revision=2` 로 원고를 넣고 Actions 를 수동 실행(`issue` 입력에 N)한다.
 
-7. `last_sent_at`은 `tcim_sends`가 대신하므로 갱신하지 않는다. 수신자별 사실이 그쪽에 남는다.
-8. `select count(*) from tcim_subscribers where status='pending'`. 1건 이상이면 최종 메시지 끝에 `구독 신청 N건 대기`를 덧붙인다.
+설정(최초 1회): 저장소 Settings → Secrets and variables → Actions 에 `SUPABASE_SERVICE_ROLE_KEY` 하나. Resend 키, 발신 주소, `auto_send` 는 `tcim_private_config` 에서 읽는다. `auto_send` 가 `true` 가 아니면 Actions 는 dry run 만 한다. 배경은 `DESIGN.md`, 최초 메일 설정은 `SETUP-mail.md`.
 
 **승인은 사용자가 별도로 지시할 때만 한다. 루틴이 스스로 `status`를 `approved`로 바꾸는 일은 절대 없다.**
 
@@ -229,7 +200,7 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
 
 - 일부 소스가 실패해도 발행은 강행하고 `stats.sources_failed`에 기록한다.
 - **Supabase 접근 자체가 불가능하면** 발행을 포기하고, 최종 메시지에 원인과 함께 `발행 실패 — 다음 주 실행이 자동으로 이번 주까지 백필함`을 명확히 알린다.
-- **★저장소 코드 실행(`python3 -m tcim ...`)이 권한 검사에서 거부되면** 우회하지 않는다(코드를 다른 파일로 옮겨 실행하거나 HTML 을 손으로 조립하는 것도 우회다). `plan` 이 막히면 `tcim/plan.py` 를 Read 로 읽고 같은 규칙으로 판정해 발행까지 마친다. `build` 나 `send_issue` 가 막히면 **발송을 보류**하고 알림에 `점검: 구독 메일 미발송(N명) — 코드 실행 거부. 대화에서 '제N호 발송'이라고 하면 보냄` 1줄을 넣는다. 사용자가 대화 세션에서 허용하면 그때 보낸다.
+- **★저장소 코드 실행(`python3 -m tcim ...`)이 권한 검사에서 거부되면** 우회하지 않는다(코드를 다른 파일로 옮겨 실행하거나 HTML 을 손으로 조립하는 것도 우회다). `plan` 이 막히면 `tcim/plan.py` 를 Read 로 읽고 같은 규칙으로 판정해 발행까지 마친다. 발송은 원래 세션 몫이 아니다(5단계). 세션에서 `build` 나 `send_issue` 를 부르지 않는다.
 - 전체 실행은 효율적으로 한다. 수집과 발행에 집중하고 불필요한 탐색을 줄인다.
 
 ---
@@ -247,8 +218,8 @@ https://zzangbo.github.io/tcim/?issue=N
 ```
 
 - 헤드라인 제목은 각각 20자 안팎으로 줄인 핵심 문구만 쓴다. 날짜와 기관 상세와 부연 설명은 넣지 않는다. 예: `BRICS 전통의학 선언`, `중국 중의약 5개년 계획`
-- 발송했으면 `구독 메일 N명 발송 완료` 1줄을 덧붙인다. 실패가 있으면 `발송 실패 N건: (주소)`도 덧붙인다.
-- `auto_send`가 꺼져 있어 보내지 않았으면 `자동 발송 꺼짐 — 렌더만 확인함` 1줄.
+- 원고를 넣었으면 `구독 메일 N명 — 08:17 자동 발송 예정` 1줄을 덧붙인다. 발송 결과는 GitHub Actions 가 남기고, 실패하면 GitHub 가 따로 알린다.
+- `auto_send`가 꺼져 있으면 `자동 발송 꺼짐 — Actions 는 dry run 만 함` 1줄.
 - 신규 구독 신청이 있으면 `구독 신청 N건 대기` 1줄을 덧붙인다.
 - 소스 실패나 점검이 필요하면 `점검: (한 줄)`을 덧붙인다. 없으면 생략한다.
 - **수집 건수 내역, 백필 여부, 소스 상세 현황, 시사점, 출처 목록은 알림에 절대 쓰지 않는다.** DB(`implication_md`, `stats`, `tcim_sources.notes`)에만 남긴다.
@@ -299,3 +270,4 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-10-26** `tcim_runbook_pending` 대기열은 스케줄 실행이 읽지 않는다. 사용자가 패치를 반영하기 전까지는 같은 함정을 다시 밟는다. 그래서 스케줄 작업 프롬프트에 'RUNBOOK 을 읽은 뒤 대기열의 미반영 줄도 읽고 따른다'를 넣었다.
 - **2026-10-26** `send.py` 의 `Idempotency-Key` 에 revision 이 없어 정정판(revision 2)이 Resend 에서 1판과 같은 요청으로 걸러져 조용히 안 나갈 수 있었다. `revision` 인자를 추가했고 1판 키 형식은 그대로 두었다. 테스트 2건 추가.
 - **2026-10-26** PubMed 문헌 항목의 `url` 은 PubMed 가 준 DOI 로 만든다. DOI 에 `R2` 같은 원고 번호가 붙어 있어도 실제로 출판사 페이지로 연결된다(JABFM 사례 확인). 논평(Commentary)은 `title_ko` 앞에 `[논평]` 을 붙이고 근거 연구처럼 요약하지 않는다. 요약에는 초록에 없는 해석(예: 특정 기관 모델과의 연결)을 사실처럼 쓰지 않는다.
+- **2026-11-09** ★무인 스케줄 실행에서 `python3 -m tcim plan` 과 `build` 가 두 회차 연속(10/26, 11/9) 자동 권한 분류기에 '외부 코드'로 거부됐고, 대화 세션에서 사용자가 '제9호 발송'을 지시해도 같은 이유로 거부됐다. 권한 모드가 자동이어도 마찬가지다. 그래서 **발송을 세션 밖으로 옮겼다.** 세션은 `tcim_mail_jobs` 에 원고(수신자 제외)만 넣고, GitHub Actions(`send-mail.yml`, 월 08:17·11:17 KST)가 `python3 -m tcim dispatch` 로 렌더, 프리플라이트, 발송, `tcim_sends` 기록(RPC `tcim_record_sends`)을 한다. 5단계 전면 개정. 이번 회차는 PubMed MCP 가 첫 ToolSearch 부터 붙어 있었다.

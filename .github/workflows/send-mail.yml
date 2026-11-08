@@ -1,0 +1,50 @@
+# 구독 메일 발송. 스케줄 세션은 저장소 코드를 실행하지 못하므로(RUNBOOK '변경 이력' 2026-11-09)
+# 세션은 tcim_mail_jobs 에 원고만 넣고, 생성, 프리플라이트, 발송, 기록은 여기서 한다.
+#
+# 필요한 저장소 Secret 은 하나뿐이다: SUPABASE_SERVICE_ROLE_KEY
+# Resend 키와 발신 주소는 tcim_private_config 에서 읽는다.
+name: send-mail
+
+on:
+  schedule:
+    # 루틴은 월 07:00 KST 에 돈다. 발행이 끝날 시간을 두고 08:17 KST 에 1차,
+    # 11:17 KST 에 재시도. 이미 보낸 주소는 건너뛰므로 두 번 돌아도 중복 발송이 없다.
+    - cron: "17 23 * * 0"
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "보낼 호 번호 (비우면 10일 이내 최신 원고)"
+        required: false
+      dry_run:
+        description: "렌더와 프리플라이트만 (발송 안 함)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: send-mail
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 단위 테스트 (실패하면 발송하지 않음)
+        run: PYTHONPATH=.:tests python3 -m unittest discover -s tests
+      - name: 발송
+        env:
+          SUPABASE_URL: https://wlvhmuudjylaayunnkop.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          args=""
+          if [ -n "${{ github.event.inputs.issue }}" ]; then args="$args --issue ${{ github.event.inputs.issue }}"; fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then args="$args --dry-run"; fi
+          python3 -m tcim dispatch $args

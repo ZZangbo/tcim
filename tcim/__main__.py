@@ -2,6 +2,7 @@
 
   python3 -m tcim plan --today 2026-08-17 --last-end 2026-08-02 --last-issue 2
   python3 -m tcim build --data issue.json --template email-template.html --approved 4 --out ./out
+  python3 -m tcim dispatch [--issue N] [--dry-run]   # GitHub Actions 전용. SUPABASE_* 환경변수 필요
 """
 
 from __future__ import annotations
@@ -58,6 +59,12 @@ def _cmd_build(args: argparse.Namespace) -> int:
     return 0 if checks["ok"] else 1
 
 
+def _cmd_dispatch(args: argparse.Namespace) -> int:
+    from .dispatch import main as dispatch_main  # 네트워크 모듈은 쓸 때만 불러온다
+
+    return dispatch_main(args.issue, args.dry_run, args.template)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tcim")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -74,6 +81,12 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--approved", type=int, help="승인 구독자 수. 주면 수신자와 대조한다")
     b.add_argument("--out", help="mail.html 과 mail.txt 를 쓸 디렉터리")
     b.set_defaults(func=_cmd_build)
+
+    d = sub.add_parser("dispatch", help="tcim_mail_jobs 원고를 읽어 발송 (GitHub Actions 용)")
+    d.add_argument("--issue", type=int, help="이 호를 보낸다. 생략하면 10일 이내 가장 최근 원고")
+    d.add_argument("--dry-run", action="store_true", help="렌더와 프리플라이트만, 발송하지 않음")
+    d.add_argument("--template", default="email-template.html", help="email-template.html 경로")
+    d.set_defaults(func=_cmd_dispatch)
 
     args = parser.parse_args(argv)
     return args.func(args)

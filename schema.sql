@@ -141,3 +141,36 @@ create policy tcim_subscribers_anon_insert on public.tcim_subscribers
 --         -d '{"email":"a@b.co","source":"web"}'
 -- 2) status 위조는 401  →  {"email":"c@d.co","status":"approved","source":"web"}
 -- 3) 명단 조회는 빈 배열  →  curl "$SB/rest/v1/tcim_subscribers?select=*" -H "apikey: $ANON"
+
+-- ─────────────────────────────────────────────────────────────
+-- 메일 원고와 발송 기록 RPC (2026-11-09). 세션은 원고만 넣고 GitHub Actions 가 보낸다.
+-- 둘 다 service_role 전용이다. 원고에는 수신자를 넣지 않는다.
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.tcim_mail_jobs (
+  issue_no   integer not null,
+  revision   integer not null default 1,
+  payload    jsonb not null,          -- period_start, period_end, intro, counts, subject_headlines[], headlines[]
+  created_at timestamptz not null default now(),
+  primary key (issue_no, revision)
+);
+alter table public.tcim_mail_jobs enable row level security;  -- 정책 없음
+
+-- PostgREST 는 lower(email) 식 인덱스를 on_conflict 대상으로 못 쓴다. 그래서 RPC 로 기록한다.
+create or replace function public.tcim_record_sends(p_issue integer, p_revision integer, p_results jsonb)
+returns integer language sql set search_path = public as $$
+  with ins as (
+    insert into tcim_sends (issue_no, revision, email, status, provider, provider_id, error)
+    select p_issue, p_revision, r->>'email', r->>'status', coalesce(r->>'provider','resend'),
+           r->>'provider_id', r->>'error'
+    from jsonb_array_elements(p_results) r
+    where r->>'status' in ('sent','failed')
+    on conflict (issue_no, revision, lower(email)) do update
+      set status = excluded.status, provider_id = excluded.provider_id,
+          error = excluded.error, attempted_at = now()
+      where tcim_sends.status <> 'sent'
+    returning 1
+  )
+  select count(*)::int from ins;
+$$;
+revoke all on function public.tcim_record_sends(integer, integer, jsonb) from public, anon, authenticated;
+grant execute on function public.tcim_record_sends(integer, integer, jsonb) to service_role;
