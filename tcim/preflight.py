@@ -17,7 +17,7 @@ MIN_HEADLINES = 3
 MAX_HEADLINES = 5
 MIN_SUMMARY_CHARS = 60  # 2~3문장이면 넉넉히 넘는다. "한 줄로 줄이지 말 것"의 기계적 하한
 MAX_RESEARCH = 5
-MIN_RESEARCH_SUMMARY_CHARS = 40  # 1~2문장. 제목만 다시 적는 것을 막는 하한
+MIN_RESEARCH_SUMMARY_CHARS = 80  # 2~3문장. 제9호 미리보기에서 한 문장 요약이 너무 짧다는 피드백(2026-11-09)
 MIN_BGCOLOR_LUMINANCE = 0.75  # 이보다 어두우면 글자가 안 읽힐 위험이 있다
 
 _ANCHOR = re.compile(r"<a\b[^>]*>(.*?)</a>", re.DOTALL | re.IGNORECASE)

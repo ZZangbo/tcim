@@ -181,7 +181,7 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
    ```
 
    `payload` 에 넣을 것: `period_start`, `period_end`, `intro`, `counts`, `subject_headlines`(제목줄용 20자 안팎 축약 2개), `headlines`(3~5건, 각 항목에 `title_ko`, `summary_ko`, `section`, `region`). `issue_no` 는 열에 있으므로 payload 에 넣지 않아도 된다.
-   - **`research`(이번 호 주요 연구, 3~5편)도 넣는다.** PubMed 에서 온 근거 연구 가운데 `evidence` 블록 상위 항목을 고른다. 헤드라인에 이미 오른 연구도 넣어도 된다(메일에서 연구만 모아 보는 절이다). 각 항목에 `title_ko`, `journal`(PubMed 의 ISO 약어), `year`, `url`(`https://doi.org/...`), `summary_ko`(1~2문장, 40자 이상, 설계와 핵심 결과 위주). 논평은 `[논평]` 을 붙이되 가급적 고르지 않는다. 문헌을 못 모은 회차는 빈 배열로 두면 절째 빠진다.
+   - **`research`(이번 호 주요 연구, 3~5편)도 넣는다.** PubMed 에서 온 근거 연구 가운데 `evidence` 블록 상위 항목을 고른다. 헤드라인에 이미 오른 연구도 넣어도 된다(메일에서 연구만 모아 보는 절이다). 각 항목에 `title_ko`, `journal`(PubMed 의 ISO 약어), `year`, `url`(`https://doi.org/...`), `summary_ko`(**2~3문장, 80자 이상**. 연구 설계와 규모 1문장, 핵심 결과 1문장, 한계나 정책적 함의 1문장. 초록에 없는 해석은 쓰지 않는다). 논평은 `[논평]` 을 붙이되 가급적 고르지 않는다. 문헌을 못 모은 회차는 빈 배열로 두면 절째 빠진다.
    - **각 항목 요약은 2~3문장, 60자 이상.** 한 줄로 줄이지 않는다. DB 의 `summary_ko`를 메일 문장(합니다체)으로 다듬되 사실을 바꾸지 않는다.
    - 링크, 색, 수신 중단 문구, 배경색 제약은 `render.py` 와 프리플라이트가 맡는다. 원고에 HTML 을 넣지 않는다.
    - 프리플라이트가 실패하면 Actions 가 한 통도 보내지 않고 실패로 끝난다. GitHub 가 저장소 주인에게 실패 메일을 보낸다.
@@ -272,3 +272,4 @@ https://zzangbo.github.io/tcim/?issue=N
 - **2026-10-26** `send.py` 의 `Idempotency-Key` 에 revision 이 없어 정정판(revision 2)이 Resend 에서 1판과 같은 요청으로 걸러져 조용히 안 나갈 수 있었다. `revision` 인자를 추가했고 1판 키 형식은 그대로 두었다. 테스트 2건 추가.
 - **2026-10-26** PubMed 문헌 항목의 `url` 은 PubMed 가 준 DOI 로 만든다. DOI 에 `R2` 같은 원고 번호가 붙어 있어도 실제로 출판사 페이지로 연결된다(JABFM 사례 확인). 논평(Commentary)은 `title_ko` 앞에 `[논평]` 을 붙이고 근거 연구처럼 요약하지 않는다. 요약에는 초록에 없는 해석(예: 특정 기관 모델과의 연결)을 사실처럼 쓰지 않는다.
 - **2026-11-09** ★무인 스케줄 실행에서 `python3 -m tcim plan` 과 `build` 가 두 회차 연속(10/26, 11/9) 자동 권한 분류기에 '외부 코드'로 거부됐고, 대화 세션에서 사용자가 '제9호 발송'을 지시해도 같은 이유로 거부됐다. 권한 모드가 자동이어도 마찬가지다. 그래서 **발송을 세션 밖으로 옮겼다.** 세션은 `tcim_mail_jobs` 에 원고(수신자 제외)만 넣고, GitHub Actions(`send-mail.yml`, 월 08:17·11:17 KST)가 `python3 -m tcim dispatch` 로 렌더, 프리플라이트, 발송, `tcim_sends` 기록(RPC `tcim_record_sends`)을 한다. 5단계 전면 개정. 이번 회차는 PubMed MCP 가 첫 ToolSearch 부터 붙어 있었다.
+- **2026-11-09** 메일에 '이번 호 주요 연구' 절을 따로 두었다. 헤드라인 카드에 섞인 연구는 정책 기사와 구분되지 않아 독자가 놓쳤다(사용자 피드백). 연구별 요약은 한 문장이면 너무 짧다는 피드백에 따라 2~3문장, 프리플라이트 하한 80자로 올렸다.
