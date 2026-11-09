@@ -35,6 +35,12 @@ UNSUBSCRIBE_MAILTO = "tcim@jbhlab.com"
 
 CARD_START = "<!-- CARD:START -->"
 CARD_END = "<!-- CARD:END -->"
+RESEARCH_START = "<!-- RESEARCH:START -->"
+RESEARCH_END = "<!-- RESEARCH:END -->"
+RITEM_START = "<!-- RITEM:START -->"
+RITEM_END = "<!-- RITEM:END -->"
+
+RITEM_PAD = "12px 26px"
 
 FIRST_CARD_PAD = "14px 26px 0"
 NEXT_CARD_PAD = "11px 26px 0"
@@ -93,6 +99,40 @@ def _render_cards(card_tpl: str, items: list[dict]) -> str:
     return "\n\n".join(out)
 
 
+def research_source(item: dict) -> str:
+    """'BMJ Open, 2026' 처럼 저널과 연도. 없는 쪽은 빼고 붙인다. 가운뎃점은 쓰지 않는다."""
+    parts = [str(item.get("journal") or "").strip(), str(item.get("year") or "").strip()]
+    return ", ".join(p for p in parts if p)
+
+
+def _render_research(template: str, items: list[dict]) -> str:
+    """'이번 호 주요 연구' 절을 채우거나, 항목이 없으면 절째 들어낸다.
+
+    헤드라인 카드는 정책 소식이 차지하기 쉬워서 PubMed 문헌이 메일에 거의 안 실렸다(제7~9호 1~2건).
+    그래서 근거 연구를 따로 한 절로 보낸다. 링크는 맨 URL 이 아니라 'DOI 보기' 앵커로 넣는다.
+    """
+    if RESEARCH_START not in template:
+        return template
+    head, rest = template.split(RESEARCH_START, 1)
+    section, tail = rest.split(RESEARCH_END, 1)
+    if not items:
+        return head + tail
+    if RITEM_START not in section or RITEM_END not in section:
+        raise ValueError("템플릿 RESEARCH 절에 RITEM:START / RITEM:END 표시가 없다")
+    s_head, s_rest = section.split(RITEM_START, 1)
+    item_tpl, s_tail = s_rest.split(RITEM_END, 1)
+    blocks = []
+    for item in items:
+        block = item_tpl.strip()
+        block = block.replace("{{R_PAD}}", RITEM_PAD)
+        block = block.replace("{{R_TITLE}}", _html.escape(_title_of(item)))
+        block = block.replace("{{R_SOURCE}}", _html.escape(research_source(item)))
+        block = block.replace("{{R_URL}}", _html.escape(str(item.get("url") or "").strip(), quote=True))
+        block = block.replace("{{R_SUMMARY}}", _html.escape(str(item.get("summary_ko") or "").strip()))
+        blocks.append(block)
+    return head + s_head + "\n".join(blocks) + s_tail + tail
+
+
 def _title_of(item: dict) -> str:
     return (item.get("title_ko") or item.get("title") or "").strip()
 
@@ -113,6 +153,16 @@ def render_text(data: dict, period_label: str) -> str:
         lines.append(f"[{label} | {item.get('region', 'GLOBAL')}] {_title_of(item)}")
         lines.append(item.get("summary_ko", "").strip())
         lines.append("")
+    research = data.get("research") or []
+    if research:
+        lines.append("■ 이번 호 주요 연구")
+        lines.append("")
+        for item in research:
+            source = research_source(item)
+            lines.append(f"{_title_of(item)}" + (f" ({source})" if source else ""))
+            lines.append(str(item.get("summary_ko") or "").strip())
+            lines.append(f"DOI: {str(item.get('url') or '').strip()}")
+            lines.append("")
     lines += [
         f"제{issue_no}호 전체 보기: {ISSUE_URL.format(issue_no=issue_no)}",
         "",
@@ -130,14 +180,17 @@ def render(data: dict, template: str) -> dict:
 
     data 에 필요한 것:
         issue_no, period_start, period_end (date 또는 'YYYY-MM-DD'),
-        intro, counts, subject_headlines[], headlines[]
+        intro, counts, subject_headlines[], headlines[], research[] (선택)
     headlines 의 각 항목: title_ko 또는 title, summary_ko, section, region
+    research 의 각 항목: title_ko 또는 title, summary_ko, journal, year(선택), url(https://doi.org/...)
     """
     issue_no = int(data["issue_no"])
     period_start = _as_date(data["period_start"])
     period_end = _as_date(data["period_end"])
     items = list(data["headlines"])
+    research = list(data.get("research") or [])
 
+    template = _render_research(template, research)
     skeleton, card_tpl = split_template(template)
     period_label = format_period(period_start, period_end)
 
@@ -160,7 +213,7 @@ def render(data: dict, template: str) -> dict:
         ),
         "html": html_out,
         "text": render_text(
-            {**data, "issue_no": issue_no, "headlines": items}, period_label
+            {**data, "issue_no": issue_no, "headlines": items, "research": research}, period_label
         ),
         "headers": {
             "List-Unsubscribe": f"<mailto:{UNSUBSCRIBE_MAILTO}?subject=TCIM unsubscribe>",

@@ -170,7 +170,7 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
 
 ## 5단계 — 구독 메일 원고 등록 (발송은 GitHub Actions)
 
-**세션은 메일을 직접 보내지 않는다.** 스케줄 세션이 clone 한 저장소 코드(`python3 -m tcim ...`)를 실행하면 자동 권한 분류기가 '외부 코드'로 거부한다(10/26, 11/9 연속). 그래서 판단이 들어가는 원고만 세션이 DB 에 넣고, 렌더, 프리플라이트 13종, 발송, `tcim_sends` 기록은 `.github/workflows/send-mail.yml` 이 `python3 -m tcim dispatch` 로 한다. 월 08:17 KST 1차, 11:17 KST 재시도. 이미 보낸 주소는 건너뛰므로 몇 번 돌아도 중복 발송이 없다.
+**세션은 메일을 직접 보내지 않는다.** 스케줄 세션이 clone 한 저장소 코드(`python3 -m tcim ...`)를 실행하면 자동 권한 분류기가 '외부 코드'로 거부한다(10/26, 11/9 연속). 그래서 판단이 들어가는 원고만 세션이 DB 에 넣고, 렌더, 프리플라이트 14종, 발송, `tcim_sends` 기록은 `.github/workflows/send-mail.yml` 이 `python3 -m tcim dispatch` 로 한다. 월 08:17 KST 1차, 11:17 KST 재시도. 이미 보낸 주소는 건너뛰므로 몇 번 돌아도 중복 발송이 없다.
 
 1. `select count(*) from tcim_subscribers where status='approved'` → **0명이면 원고를 넣지 않고 이 단계를 건너뛴다.**
 2. 원고를 `tcim_mail_jobs` 에 넣는다. **수신자는 넣지 않는다**(Actions 가 `tcim_subscribers` 를 직접 읽는다).
@@ -181,6 +181,7 @@ EMA 허브의약품위원회(HMPC) `https://www.ema.europa.eu/en/committees/comm
    ```
 
    `payload` 에 넣을 것: `period_start`, `period_end`, `intro`, `counts`, `subject_headlines`(제목줄용 20자 안팎 축약 2개), `headlines`(3~5건, 각 항목에 `title_ko`, `summary_ko`, `section`, `region`). `issue_no` 는 열에 있으므로 payload 에 넣지 않아도 된다.
+   - **`research`(이번 호 주요 연구, 3~5편)도 넣는다.** PubMed 에서 온 근거 연구 가운데 `evidence` 블록 상위 항목을 고른다. 헤드라인에 이미 오른 연구도 넣어도 된다(메일에서 연구만 모아 보는 절이다). 각 항목에 `title_ko`, `journal`(PubMed 의 ISO 약어), `year`, `url`(`https://doi.org/...`), `summary_ko`(1~2문장, 40자 이상, 설계와 핵심 결과 위주). 논평은 `[논평]` 을 붙이되 가급적 고르지 않는다. 문헌을 못 모은 회차는 빈 배열로 두면 절째 빠진다.
    - **각 항목 요약은 2~3문장, 60자 이상.** 한 줄로 줄이지 않는다. DB 의 `summary_ko`를 메일 문장(합니다체)으로 다듬되 사실을 바꾸지 않는다.
    - 링크, 색, 수신 중단 문구, 배경색 제약은 `render.py` 와 프리플라이트가 맡는다. 원고에 HTML 을 넣지 않는다.
    - 프리플라이트가 실패하면 Actions 가 한 통도 보내지 않고 실패로 끝난다. GitHub 가 저장소 주인에게 실패 메일을 보낸다.

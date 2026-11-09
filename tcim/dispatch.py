@@ -151,11 +151,13 @@ def run(
         return {"ok": False, "action": "blocked", "issue_no": n, "reason": "resend_api_key 없음 — SETUP-mail.md"}
 
     pending = [e for e in ctx["approved"] if e.strip().lower() not in ctx["already_sent"]]
-    if not pending:
+    if not pending and not dry_run:
         return {"ok": True, "action": "none", "issue_no": n, "reason": "전원 발송 완료"}
+    # dry run 은 전원 발송된 호도 렌더와 프리플라이트를 돌린다. 모양 확인(mail-preview)용이다.
 
     data = build_issue_data(job, ctx["approved"])
     rendered = render_mod.render(data, template)
+    _save_preview(rendered)
     checks = preflight_mod.check(rendered, data, approved_count=len(ctx["approved"]))
     if not checks["ok"]:
         return {"ok": False, "action": "blocked", "issue_no": n, "reason": "프리플라이트 실패", "preflight": checks}
@@ -197,6 +199,17 @@ def run(
         "auto_send": auto,
         "preflight_warnings": checks["warnings"],
     }
+
+
+def _save_preview(rendered: dict) -> None:
+    """TCIM_PREVIEW_DIR 가 있으면 렌더 결과를 파일로 남긴다. Actions 가 아티팩트로 올려 눈으로 확인한다."""
+    out = os.environ.get("TCIM_PREVIEW_DIR")
+    if not out:
+        return
+    path = pathlib.Path(out)
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "mail.html").write_text(rendered["html"], encoding="utf-8")
+    (path / "mail.txt").write_text(rendered["subject"] + "\n\n" + rendered["text"], encoding="utf-8")
 
 
 def main(issue_no: int | None, dry_run: bool, template_path: str) -> int:

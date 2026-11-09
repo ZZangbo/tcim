@@ -99,6 +99,21 @@ class TestDispatch(unittest.TestCase):
         self.assertEqual(t.calls, [])
         self.assertEqual(db.rpcs, [])
 
+    def test_dry_run_renders_even_when_all_sent(self):
+        db = FakeDB(APPROVED, sent=APPROVED)
+        out, t = run(db, dry_run=True)
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["action"], "dry_run")
+        self.assertEqual(t.calls, [])
+        self.assertEqual(db.rpcs, [])
+
+    def test_research_in_payload_reaches_mail(self):
+        db = FakeDB(APPROVED)
+        db.jobs[0]["payload"]["research"] = fixture.research_items()
+        out, _ = run(db)
+        self.assertTrue(out["ok"])
+        self.assertNotIn("주요 연구 절이 비어 있어 메일에서 빠졌다", out["preflight_warnings"])
+
     def test_recipients_come_from_db_not_payload(self):
         db = FakeDB(APPROVED)
         db.jobs[0]["payload"]["recipients"] = ["stale@example.com"]

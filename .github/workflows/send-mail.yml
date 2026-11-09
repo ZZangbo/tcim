@@ -43,8 +43,17 @@ jobs:
         env:
           SUPABASE_URL: https://wlvhmuudjylaayunnkop.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TCIM_PREVIEW_DIR: preview
         run: |
           args=""
           if [ -n "${{ github.event.inputs.issue }}" ]; then args="$args --issue ${{ github.event.inputs.issue }}"; fi
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then args="$args --dry-run"; fi
           python3 -m tcim dispatch $args
+      - name: 렌더 결과 보관 (실행 화면 아래 Artifacts 의 mail-preview)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mail-preview
+          path: preview/
+          if-no-files-found: ignore
+          retention-days: 14

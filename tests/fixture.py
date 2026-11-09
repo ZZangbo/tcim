@@ -64,3 +64,39 @@ def issue_data(issue_no: int = 3) -> dict:
             },
         ],
     }
+
+
+def research_items() -> list[dict]:
+    """'이번 호 주요 연구' 절용. 제9호 실제 항목을 줄여서 쓴다."""
+    return [
+        {
+            "title_ko": "중국 DRG/DIP 개혁하 중의 우세병종 성과기반 지불의 공공가치 평가",
+            "journal": "Front Public Health",
+            "year": 2026,
+            "url": "https://doi.org/10.3389/fpubh.2026.1902781",
+            "summary_ko": (
+                "입원 7,985건을 분석한 다기관 준실험연구로, 성과기반 지불은 본인부담을 "
+                "낮추고 환자중심 공공가치지수를 높인 것과 연관됐습니다."
+            ),
+        },
+        {
+            "title_ko": "요통 진료지침 권고 중재의 비용효과성: 체계적 문헌고찰",
+            "journal": "PLoS Med",
+            "year": 2026,
+            "url": "https://doi.org/10.1371/journal.pmed.1005273",
+            "summary_ko": (
+                "경제성 평가 20편을 분석해 요가와 침을 포함한 비약물 중재가 일반 진료보다 "
+                "비용절감적일 수 있다고 보고했습니다."
+            ),
+        },
+        {
+            "title_ko": "국가 필수의약품 목록의 허브의약품 선정 근거기준 개발(태국)",
+            "journal": "BMC Complement Med Ther",
+            "year": 2026,
+            "url": "https://doi.org/10.1186/s12906-026-05494-0",
+            "summary_ko": (
+                "WHO와 EMA 기준을 참고해 전통의약품과 허브의약품의 효능 및 안전성 평가 "
+                "기준을 세 단계 판정으로 만들었습니다."
+            ),
+        },
+    ]

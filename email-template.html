@@ -7,7 +7,10 @@
      이 파일은 tcim/render.py 가 읽어서 치환한다. 손으로 채우지 말 것.
      골격 자리표시자: {{ISSUE_NO}} {{PERIOD}} {{INTRO}} {{COUNTS}}
      CARD:START ~ CARD:END 사이가 카드 한 장의 틀이고 헤드라인 수만큼 복제된다.
-     카드 자리표시자: {{CARD_PAD}} {{SECTION_COLOR}} {{SECTION_LABEL}} {{REGION}} {{TITLE}} {{SUMMARY}} -->
+     카드 자리표시자: {{CARD_PAD}} {{SECTION_COLOR}} {{SECTION_LABEL}} {{REGION}} {{TITLE}} {{SUMMARY}}
+     RESEARCH:START ~ RESEARCH:END 는 '이번 호 주요 연구' 절이다. 원고에 research 가 없으면 절째 빠진다.
+     그 안의 RITEM:START ~ RITEM:END 가 연구 한 편의 틀이다.
+     연구 자리표시자: {{R_PAD}} {{R_TITLE}} {{R_SOURCE}} {{R_URL}} {{R_SUMMARY}} -->
 <!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;padding:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:20px 10px;"><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border:1px solid #dfe5ea;border-radius:12px;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;">
 
 <tr><td bgcolor="#f1f7f5" style="padding:22px 26px;border-bottom:3px solid #0f6b5c;border-radius:12px 12px 0 0;">
@@ -24,6 +27,17 @@
 <div style="font-size:13.5px;color:#4d5866;line-height:1.75;">{{SUMMARY}}</div>
 </td></tr></table></td></tr>
 <!-- CARD:END -->
+
+<!-- RESEARCH:START -->
+<tr><td style="padding:26px 26px 0;"><div style="font-size:12px;font-weight:700;color:#3554a5;letter-spacing:0.5px;padding-bottom:7px;border-bottom:2px solid #3554a5;">이번 호 주요 연구</div></td></tr>
+<!-- RITEM:START -->
+<tr><td style="padding:{{R_PAD}};border-bottom:1px solid #eaeff3;">
+<div style="font-size:14.5px;font-weight:700;color:#182029;line-height:1.5;">{{R_TITLE}}</div>
+<div style="font-size:12px;color:#5d6b78;margin:4px 0 6px;line-height:1.5;">{{R_SOURCE}} &nbsp;&#124;&nbsp; <a href="{{R_URL}}" style="color:#3554a5;font-weight:700;">DOI 보기</a></div>
+<div style="font-size:13px;color:#4d5866;line-height:1.7;">{{R_SUMMARY}}</div>
+</td></tr>
+<!-- RITEM:END -->
+<!-- RESEARCH:END -->
 
 <tr><td align="center" style="padding:24px 26px 6px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td bgcolor="#f1f7f5" align="center" style="border:2px solid #0f6b5c;border-radius:8px;padding:13px 30px;"><a href="https://zzangbo.github.io/tcim/?issue={{ISSUE_NO}}" style="color:#0f6b5c;font-size:15px;font-weight:700;text-decoration:none;">제{{ISSUE_NO}}호 전체 보기 &#8594;</a></td></tr></table></td></tr>
 

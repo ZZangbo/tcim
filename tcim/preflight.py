@@ -16,6 +16,8 @@ from .render import strip_html_comments
 MIN_HEADLINES = 3
 MAX_HEADLINES = 5
 MIN_SUMMARY_CHARS = 60  # 2~3문장이면 넉넉히 넘는다. "한 줄로 줄이지 말 것"의 기계적 하한
+MAX_RESEARCH = 5
+MIN_RESEARCH_SUMMARY_CHARS = 40  # 1~2문장. 제목만 다시 적는 것을 막는 하한
 MIN_BGCOLOR_LUMINANCE = 0.75  # 이보다 어두우면 글자가 안 읽힐 위험이 있다
 
 _ANCHOR = re.compile(r"<a\b[^>]*>(.*?)</a>", re.DOTALL | re.IGNORECASE)
@@ -25,6 +27,7 @@ _WHITE_TEXT = re.compile(r"color\s*:\s*(?:#fff\b|#ffffff\b|white\b)", re.IGNOREC
 _ISSUE_LINK = re.compile(r"\?issue=(\d+)")
 _PLACEHOLDER = re.compile(r"\{\{[A-Z_]+\}\}")
 _BGCOLOR = re.compile(r'bgcolor\s*=\s*"(#[0-9a-fA-F]{6})"')
+_RESEARCH_LINK = re.compile(r">\s*DOI 보기\s*</a>")
 _EXTERNAL_ASSET = re.compile(r"(<img\b|@import|url\(\s*['\"]?https?:)", re.IGNORECASE)
 
 UNSUBSCRIBE_NOTICE = "수신을 중단하시려면"
@@ -59,12 +62,13 @@ def check(rendered: dict, data: dict, approved_count: int | None = None) -> dict
     _check_text_alternative(rendered, failures)
     _check_headers(rendered, failures)
     _check_recipients(data, approved_count, failures, warnings)
+    _check_research(body, rendered, data, failures, warnings)
 
     return {
         "ok": not failures,
         "failures": failures,
         "warnings": warnings,
-        "checked": 13,
+        "checked": 14,
     }
 
 
@@ -203,6 +207,44 @@ def _check_recipients(
         failures.append(
             f"수신자 {len(recipients)}명과 승인 구독자 {approved_count}명이 다르다"
         )
+
+
+def _check_research(
+    body: str, rendered: dict, data: dict, failures: list[str], warnings: list[str]
+) -> None:
+    """'이번 호 주요 연구' 절. 선택 항목이라 비어 있으면 경고만 한다.
+
+    PubMed 가 붙지 않은 회차에는 문헌이 없을 수 있다. 그때 발송까지 막으면 정책 소식도 못 나간다.
+    있으면 항목마다 제목, 출처, 요약, DOI 링크가 갖춰져야 하고 렌더 결과에 빠짐없이 실려야 한다.
+    """
+    items = data.get("research") or []
+    if not items:
+        warnings.append("주요 연구 절이 비어 있어 메일에서 빠졌다")
+        return
+    if len(items) > MAX_RESEARCH:
+        failures.append(f"주요 연구가 {len(items)}편이다. {MAX_RESEARCH}편 이하여야 한다")
+    for idx, item in enumerate(items, 1):
+        title = (item.get("title_ko") or item.get("title") or "").strip()
+        summary = str(item.get("summary_ko") or "").strip()
+        url = str(item.get("url") or "").strip()
+        label = f"주요 연구 {idx}번"
+        if not title:
+            failures.append(f"{label}에 제목이 없다")
+        if not str(item.get("journal") or "").strip():
+            failures.append(f"{label}에 저널명이 없다 (제목: {title[:24]})")
+        if len(summary) < MIN_RESEARCH_SUMMARY_CHARS:
+            failures.append(
+                f"{label}의 요약이 {len(summary)}자다. {MIN_RESEARCH_SUMMARY_CHARS}자 이상이어야 한다"
+            )
+        if not url.startswith("https://"):
+            failures.append(f"{label}의 링크가 https 주소가 아니다: {url[:60]}")
+        elif not url.startswith("https://doi.org/"):
+            warnings.append(f"{label}의 링크가 DOI 주소가 아니다: {url[:60]}")
+    shown = len(_RESEARCH_LINK.findall(body))
+    if shown != len(items):
+        failures.append(f"주요 연구 {len(items)}편 중 메일에 실린 링크가 {shown}개다")
+    if "이번 호 주요 연구" not in rendered.get("text", ""):
+        failures.append("평문 대체본에 주요 연구 절이 없다")
 
 
 def _luminance(hex_color: str) -> float:
